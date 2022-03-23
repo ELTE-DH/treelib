@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import sys
 
 import os
 
-try:
-    from StringIO import StringIO as BytesIO
-except ImportError:
-    from io import BytesIO
 import unittest
 from treelib import Tree, Node
 from treelib.tree import NodeIDAbsentError, LoopError
@@ -75,7 +70,6 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(isinstance(self.copytree, Tree), True)
 
     def test_is_root(self):
-        # retro-compatibility
         self.assertTrue(self.tree._nodes['hárry'].is_root())
         self.assertFalse(self.tree._nodes['jane'].is_root())
 

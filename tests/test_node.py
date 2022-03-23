@@ -12,9 +12,6 @@ class NodeCase(unittest.TestCase):
     def test_initialization(self):
         self.assertEqual(self.node1.tag, "Test One")
         self.assertEqual(self.node1.identifier, "identifier 1")
-        # retro-compatibility
-        self.assertEqual(self.node1.bpointer, None)
-        self.assertEqual(self.node1.fpointer, [])
 
         self.assertEqual(self.node1.expanded, True)
         self.assertEqual(self.node1._predecessor, {})
@@ -36,26 +33,12 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1.identifier, "ID1")
         self.node1.identifier = "identifier 1"
 
-    def test_set_fpointer(self):
-        # retro-compatibility
-        self.node1.update_fpointer("identifier 2")
-        self.assertEqual(self.node1.fpointer, ['identifier 2'])
-        self.node1.fpointer = []
-        self.assertEqual(self.node1.fpointer, [])
-
     def test_update_successors(self):
         self.node1.update_successors("identifier 2", tree_id="tree 1")
         self.assertEqual(self.node1.successors("tree 1"), ['identifier 2'])
         self.assertEqual(self.node1._successors["tree 1"], ['identifier 2'])
         self.node1.set_successors([], tree_id="tree 1")
         self.assertEqual(self.node1._successors["tree 1"], [])
-
-    def test_set_bpointer(self):
-        # retro-compatibility
-        self.node2.update_bpointer("identifier 1")
-        self.assertEqual(self.node2.bpointer, 'identifier 1')
-        self.node2.bpointer = None
-        self.assertEqual(self.node2.bpointer, None)
 
     def test_set_predecessor(self):
         self.node2.set_predecessor("identifier 1", "tree 1")
@@ -65,8 +48,8 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2.predecessor("tree 1"), None)
 
     def test_set_is_leaf(self):
-        self.node1.update_fpointer("identifier 2")
-        self.node2.update_bpointer("identifier 1")
+        self.node1.update_successors("identifier 2")
+        self.node2.set_predecessor("identifier 1", "tree 1")
         self.assertEqual(self.node1.is_leaf(), False)
         self.assertEqual(self.node2.is_leaf(), True)
 

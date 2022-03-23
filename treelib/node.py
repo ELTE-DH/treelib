@@ -23,7 +23,6 @@ Node structure in treelib.
 A :class:`Node` object contains basic properties such as node identifier,
 node tag, parent node, children nodes etc., and some operations for a node.
 """
-from __future__ import unicode_literals
 
 import copy
 import uuid
@@ -31,10 +30,9 @@ from collections import defaultdict
 from warnings import warn
 
 from .exceptions import NodePropertyError
-from .misc import deprecated
 
 
-class Node(object):
+class Node:
     """
     Nodes are elementary objects that are stored in the `_nodes` dictionary of a Tree.
     Use `data` attribute to store node-specific data.
@@ -81,50 +79,9 @@ class Node(object):
     def _set_identifier(self, nid):
         """Initialize self._set_identifier"""
         if nid is None:
-            self._identifier = str(uuid.uuid1())
-        else:
-            self._identifier = nid
+            nid = str(uuid.uuid1())
 
-    @property
-    @deprecated(alias='node.predecessor')
-    def bpointer(self):
-        """Use predecessor method, this property is deprecated and only kept for retro-compatilibity. Parents of
-        a node are dependant on a given tree. This implementation keeps the previous behavior by keeping returning 
-        bpointer of first declared tree.
-        """
-        if self._initial_tree_id not in self._predecessor.keys():
-            return None
-        return self._predecessor[self._initial_tree_id]
-
-    @bpointer.setter
-    @deprecated(alias='node.set_predecessor')
-    def bpointer(self, value):
-        self.set_predecessor(value, self._initial_tree_id)
-
-    @deprecated(alias='node.set_predecessor')
-    def update_bpointer(self, nid):
-        self.set_predecessor(nid, self._initial_tree_id)
-
-    @property
-    @deprecated(alias='node.successors')
-    def fpointer(self):
-        """Use successors method, this property is deprecated and only kept for retro-compatilibity. Children of
-        a node are dependant on a given tree. This implementation keeps the previous behavior by keeping returning
-        fpointer of first declared tree.
-        """
-        if self._initial_tree_id not in self._successors:
-            return []
-        return self._successors[self._initial_tree_id]
-
-    @fpointer.setter
-    @deprecated(alias='node.update_successors')
-    def fpointer(self, value):
-        self.set_successors(value, tree_id=self._initial_tree_id)
-
-    @deprecated(alias='node.update_successors')
-    def update_fpointer(self, nid, mode=ADD, replace=None):
-        """Deprecated"""
-        self.update_successors(nid, mode, replace, self._initial_tree_id)
+        self._identifier = nid
 
     def predecessor(self, tree_id):
         """
@@ -155,11 +112,10 @@ class Node(object):
         }
 
         t = value.__class__.__name__
-        if t in setter_lookup:
-            f_setter = setter_lookup[t]
-            self._successors[tree_id] = f_setter(value)
-        else:
+        f_setter = setter_lookup.get(t)
+        if f_setter is None:
             raise NotImplementedError('Unsupported value type %s' % t)
+        self._successors[tree_id] = f_setter(value)
 
     def update_successors(self, nid, mode=ADD, replace=None, tree_id=None):
         """
@@ -197,10 +153,9 @@ class Node(object):
             self.REPLACE: '_manipulator_replace'
         }
 
-        if mode not in manipulator_lookup:
-            raise NotImplementedError('Unsupported node updating mode %s' % str(mode))
-
         f_name = manipulator_lookup.get(mode)
+        if f_name is None:
+            raise NotImplementedError('Unsupported node updating mode %s' % str(mode))
         f = locals()[f_name]
         return f()
 
@@ -226,33 +181,22 @@ class Node(object):
     @identifier.setter
     def identifier(self, value):
         """Set the value of `_identifier`."""
-        if value is None:
-            print("WARNING: node ID can not be None")
-        else:
+        if value is not None:
             self._set_identifier(value)
+        else:
+            print("WARNING: node ID can not be None")
 
     def is_leaf(self, tree_id=None):
         """Return true if current node has no children."""
         if tree_id is None:
-            # for retro-compatilibity
-            if self._initial_tree_id not in self._successors.keys():
-                return True
-            else:
-                tree_id = self._initial_tree_id
+            tree_id = self._initial_tree_id
 
-        if len(self.successors(tree_id)) == 0:
-            return True
-        else:
-            return False
+        return len(self.successors(tree_id)) == 0
 
     def is_root(self, tree_id=None):
         """Return true if self has no parent, i.e. as root."""
         if tree_id is None:
-            # for retro-compatilibity
-            if self._initial_tree_id not in self._predecessor.keys():
-                return True
-            else:
-                tree_id = self._initial_tree_id
+            tree_id = self._initial_tree_id
 
         return self.predecessor(tree_id) is None
 
@@ -267,7 +211,7 @@ class Node(object):
     @tag.setter
     def tag(self, value):
         """Set the value of `_tag`."""
-        self._tag = value if value is not None else None
+        self._tag = value
 
     def __repr__(self):
         name = self.__class__.__name__
