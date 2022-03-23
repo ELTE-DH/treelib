@@ -39,6 +39,9 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1._successors["tree 1"], ['identifier 2'])
         self.node1.set_successors([], tree_id="tree 1")
         self.assertEqual(self.node1._successors["tree 1"], [])
+        self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, tree_id="tree 1")
+        self.assertIsNone(self.node1.update_successors(None, tree_id="tree 1"))
+        self.assertRaises(NotImplementedError, self.node1.update_successors, "identifier 2", 1000)
 
     def test_set_predecessor(self):
         self.node2.set_predecessor("identifier 1", "tree 1")
