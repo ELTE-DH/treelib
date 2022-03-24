@@ -21,7 +21,9 @@ from .node import Node
 
 
 class Tree:
-    """Tree objects are made of Node(s) stored in nodes dictionary."""
+    """
+    Tree objects are made of Node(s) stored in nodes dictionary.
+    """
 
     #: ROOT, DEPTH, WIDTH, ZIGZAG constants :
     (ROOT, DEPTH, WIDTH, ZIGZAG) = list(range(4))
@@ -31,7 +33,9 @@ class Tree:
         return identifier in self.nodes.keys()
 
     def __init__(self, tree=None, deep: bool = False, node_class=None, identifier=None):
-        """Initiate a new tree or copy another tree with a shallow or deep copy."""
+        """
+        Initiate a new tree or copy another tree with a shallow or deep copy.
+        """
 
         # Initialize self._set_identifier
         if identifier is None:
@@ -42,12 +46,11 @@ class Tree:
             assert issubclass(node_class, Node)
             self.node_class = node_class
 
-        #: dictionary, identifier: Node object
-        # Dict form of nodes in a tree: {id: node_instance}.
+        #: Dict of nodes in a tree: {identifier: node_instance}.
         self.nodes = {}
 
         #: Get or set the identifier of the root. This attribute can be accessed and modified
-        #: with ``.`` and ``=`` operator respectively.
+        #:  with ``.`` and ``=`` operator respectively.
         self.root = None
 
         if tree is not None:
@@ -58,8 +61,19 @@ class Tree:
                 if tree.identifier != self.identifier:
                     new_node.clone_pointers(tree.identifier, self.identifier)
 
+        # Render characters
+        self._dt = {
+            'ascii': ('|', '|-- ', '+-- '),
+            'ascii-ex': ('\u2502', '\u251c\u2500\u2500 ', '\u2514\u2500\u2500 '),
+            'ascii-exr': ('\u2502', '\u251c\u2500\u2500 ', '\u2570\u2500\u2500 '),
+            'ascii-em': ('\u2551', '\u2560\u2550\u2550 ', '\u255a\u2550\u2550 '),
+            'ascii-emv': ('\u2551', '\u255f\u2500\u2500 ', '\u2559\u2500\u2500 '),
+            'ascii-emh': ('\u2502', '\u255e\u2550\u2550 ', '\u2558\u2550\u2550 '),
+        }
+
     def _clone(self, identifier=None, with_tree=False, deep=False):
-        """Clone current instance, with or without tree.
+        """
+        Clone current instance, with or without tree.
 
         Method intended to be overloaded, to avoid rewriting whole "subtree" and "remove_subtree" methods when
         inheriting from Tree.
@@ -75,57 +89,53 @@ class Tree:
         >>>             tree=self if with_tree else None,
         >>>             tree_description=self.tree_description
         >>>         )
-        >>> my_custom_tree = TreeWithComposition(tree_description="smart tree")
+        >>> my_custom_tree = TreeWithComposition(tree_description='smart tree')
         >>> subtree = my_custom_tree.subtree()
         >>> subtree.tree_description
-        "smart tree"
+        'smart tree'
         """
         return self.__class__(identifier=identifier, tree=self if with_tree else None, deep=deep)
 
     def __getitem__(self, key):
-        """Return nodes[key]"""
+        """
+        Return nodes[key]
+        """
         try:
             return self.nodes[key]
         except KeyError:
-            raise NodeIDAbsentError(f"Node '{key}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{key}\' is not in the tree!')
 
     def __len__(self):
-        """Return len(nodes)"""
+        """
+        Return len(nodes)
+        """
         return len(self.nodes)
 
-    def __get(self, nid, level, filter_, key, reverse, line_type):
-        # default filter
-        if filter_ is None:
-            def filter_(_):  # node
+    def __get(self, nid, level, filter_fun, key, reverse, line_type):
+        # Default filter
+        if filter_fun is None:
+            def filter_fun(_):  # node
                 return True
 
-        # render characters
-        dt = {
-            'ascii': ('|', '|-- ', '+-- '),
-            'ascii-ex': ('\u2502', '\u251c\u2500\u2500 ', '\u2514\u2500\u2500 '),
-            'ascii-exr': ('\u2502', '\u251c\u2500\u2500 ', '\u2570\u2500\u2500 '),
-            'ascii-em': ('\u2551', '\u2560\u2550\u2550 ', '\u255a\u2550\u2550 '),
-            'ascii-emv': ('\u2551', '\u255f\u2500\u2500 ', '\u2559\u2500\u2500 '),
-            'ascii-emh': ('\u2502', '\u255e\u2550\u2550 ', '\u2558\u2550\u2550 '),
-        }[line_type]
+        dt = self._dt[line_type]
 
-        return self.__get_iter(nid, level, filter_, key, reverse, dt, [])
+        return self.__get_iter(nid, level, filter_fun, key, reverse, dt, [])
 
-    def __get_iter(self, nid, level, filter_, key, reverse, dt, is_last):
+    def __get_iter(self, nid, level, filter_fun, key, reverse, dt, is_last):
         dt_vertical_line, dt_line_box, dt_line_corner = dt
 
         nid = self.root if nid is None else nid
         node = self[nid]
 
         if level == self.ROOT:
-            yield "", node
+            yield '', node
         else:
             leading = ''.join(map(lambda x: dt_vertical_line + ' ' * 3 if not x else ' ' * 4, is_last[0:-1]))
             lasting = dt_line_corner if is_last[-1] else dt_line_box
             yield leading + lasting, node
 
-        if filter_(node) and node.expanded:
-            children = [self[i] for i in node.successors(self.identifier) if filter_(self[i])]
+        if filter_fun(node) and node.expanded:
+            children = [self[i] for i in node.successors(self.identifier) if filter_fun(self[i])]
             idxlast = len(children) - 1
             if key:
                 children.sort(key=key, reverse=reverse)
@@ -134,7 +144,7 @@ class Tree:
             level += 1
             for idx, child in enumerate(children):
                 is_last.append(idx == idxlast)
-                yield from self.__get_iter(child.identifier, level, filter_, key, reverse, dt, is_last)
+                yield from self.__get_iter(child.identifier, level, filter_fun, key, reverse, dt, is_last)
                 is_last.pop()
 
     def __update_fpointer(self, nid, child_id, mode):
@@ -148,20 +158,20 @@ class Tree:
         The 'node' parameter refers to an instance of Class::Node.
         """
         if not isinstance(node, self.node_class):
-            raise OSError(f"First parameter must be object of {self.node_class}!")
+            raise OSError(f'First parameter must be object of {self.node_class}!')
 
         if node.identifier in self.nodes:
-            raise DuplicatedNodeIdError(f"Can't create node with ID '{node.identifier}'!")
+            raise DuplicatedNodeIdError(f'Cannot create node with ID \'{node.identifier}\'!')
 
         pid = parent.identifier if isinstance(parent, self.node_class) else parent
 
         if pid is None:
             if self.root is not None:
-                raise MultipleRootError("A tree takes one root merely!")
+                raise MultipleRootError('A tree takes one root merely!')
             else:
                 self.root = node.identifier
         elif pid not in self.nodes:
-            raise NodeIDAbsentError(f"Parent node '{pid}' is not in the tree!")
+            raise NodeIDAbsentError(f'Parent node \'{pid}\' is not in the tree!')
 
         self.nodes.update({node.identifier: node})
         self.__update_fpointer(pid, node.identifier, self.node_class.ADD)
@@ -180,7 +190,7 @@ class Tree:
         If no level is provided, the parent node is returned.
         """
         if nid not in self.nodes:
-            raise NodeIDAbsentError("Node '{nid}' is not in the tree")
+            raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
         descendant = self[nid]
         ascendant = self[nid].predecessor(self.identifier)
@@ -191,8 +201,8 @@ class Tree:
         elif nid == self.root:
             return self[nid]
         elif level >= self.level(descendant.identifier):
-            raise InvalidLevelNumber(f"Descendant level (level {self.level(descendant.identifier)}) "
-                                     f"must be greater than its ancestor's level (level {level})!")
+            raise InvalidLevelNumber(f'Descendant level (level {self.level(descendant.identifier)}) '
+                                     f'must be greater than its ancestor\'s level (level {level})!')
 
         while ascendant is not None:
             if ascendant_level == level:
@@ -211,7 +221,9 @@ class Tree:
         return [self[i] for i in self.is_branch(nid)]
 
     def contains(self, nid):
-        """Check if the tree contains node of given id"""
+        """
+        Check if the tree contains node of given id
+        """
         return nid in self.nodes
 
     def create_node(self, tag=None, identifier=None, parent=None, data=None):
@@ -244,7 +256,7 @@ class Tree:
             else:
                 nid = node.identifier
             if nid not in self.nodes:
-                raise NodeIDAbsentError(f"Node '{nid}' is not in the tree!")
+                raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
             ret = self.level(nid)
         return ret
 
@@ -273,7 +285,7 @@ class Tree:
         """
         nid = self.root if nid is None else nid
         if nid not in self.nodes:
-            raise NodeIDAbsentError("Node '%s' is not in the tree" % nid)
+            raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
         filter_fun = (lambda x: True) if (filter_fun is None) else filter_fun
         if filter_fun(self[nid]):
@@ -293,7 +305,6 @@ class Tree:
                         queue = queue[1:] + expansion  # width-first
 
             elif mode is self.ZIGZAG:
-                # Suggested by Ilya Kuprik (ilya-spy@ynadex.ru).
                 stack_fw = []
                 queue.reverse()
                 stack = stack_bw = queue
@@ -311,7 +322,7 @@ class Tree:
                         stack = stack_fw if direction else stack_bw
 
             else:
-                raise ValueError(f"Traversal mode '{mode}' is not supported!")
+                raise ValueError(f'Traversal mode \'{mode}\' is not supported!')
 
     def filter_nodes(self, func):
         """
@@ -319,8 +330,6 @@ class Tree:
 
         :param func: is passed one node as an argument and that node is included if function returns true,
         :return: a filter iterator of the node in python 3 or a list of the nodes in python 2.
-
-        Added by William Rusnack.
         """
         return filter(func, self.all_nodes())
 
@@ -341,9 +350,9 @@ class Tree:
         Empty list is returned if nid does not exist
         """
         if nid is None:
-            raise OSError("First parameter can't be None!")
+            raise OSError('First parameter cannot be None!')
         if nid not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{nid}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
 
         try:
             fpointer = self[nid].successors(self.identifier)
@@ -352,7 +361,9 @@ class Tree:
         return fpointer
 
     def leaves(self, nid=None):
-        """Get leaves of the whole tree or a subtree."""
+        """
+        Get leaves of the whole tree or a subtree.
+        """
         leaves = []
         if nid is None:
             for node in self.nodes.values():
@@ -383,9 +394,9 @@ class Tree:
         with `a -> c`.
         """
         if nid not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{nid}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
         if self.root == nid:
-            raise LinkPastRootNodeError("Cannot link past the root node, delete it with remove_node()")
+            raise LinkPastRootNodeError('Cannot link past the root node, delete it with remove_node()!')
         # Get the parent of the node we are linking past
         parent = self[self[nid].predecessor(self.identifier)]
         # Set the children of the node to the parent
@@ -431,9 +442,11 @@ class Tree:
         return False
 
     def parent(self, nid):
-        """Get parent :class:`Node` object of given id."""
+        """
+        Get parent :class:`Node` object of given id.
+        """
         if nid not in self.nodes:
-            raise NodeIDAbsentError("Node '%s' is not in the tree" % nid)
+            raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
         pid = self[nid].predecessor(self.identifier)
         if pid is None or pid not in self.nodes:
@@ -442,7 +455,8 @@ class Tree:
         return self[pid]
 
     def merge(self, nid, new_tree, deep=False):
-        """Patch @new_tree on current tree by pasting new_tree root children on current tree @nid node.
+        """
+        Patch @new_tree on current tree by pasting new_tree root children on current tree @nid node.
 
         Consider the following tree:
         >>> current = Tree()
@@ -478,7 +492,7 @@ class Tree:
                 self.add_node(new_tree_root)
                 nid = new_tree.root
             else:
-                raise ValueError('Must define "nid" under which new tree is merged.')
+                raise ValueError('Must define "nid" under which new tree is merged!')
         for child in new_tree.children(new_tree.root):
             self.paste(nid=nid, new_tree=new_tree.subtree(child.identifier), deep=deep)
 
@@ -495,9 +509,9 @@ class Tree:
             return
 
         if nid is None:
-            raise ValueError('Must define "nid" under which new tree is pasted.')
+            raise ValueError('Must define "nid" under which new tree is pasted!')
         elif nid not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{nid}' is not in the tree")
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
 
         set_joint = set(new_tree.nodes) & set(self.nodes)  # joint keys
         if set_joint:
@@ -552,9 +566,11 @@ class Tree:
         return res
 
     def remove_node(self, identifier):
-        """Remove a node indicated by 'identifier' with all its successors. Return the number of removed nodes."""
+        """
+        Remove a node indicated by 'identifier' with all its successors. Return the number of removed nodes.
+        """
         if identifier not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{identifier}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{identifier}\' is not in the tree!')
 
         parent = self[identifier].predecessor(self.identifier)
 
@@ -601,10 +617,10 @@ class Tree:
             return st
 
         if nid not in self.nodes:
-            raise NodeIDAbsentError("Node '%s' is not in the tree" % nid)
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
         st.root = nid
 
-        # in original tree, the removed nid will be unreferenced from its parents children
+        # In original tree, the removed nid will be unreferenced from its parents children
         parent = self[nid].predecessor(self.identifier)
 
         removed = list(self.expand_tree(nid))
@@ -630,7 +646,7 @@ class Tree:
             return
 
         if nid not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{nid}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
 
         filter_fun = (lambda x: True) if (filter_fun is None) else filter_fun
 
@@ -638,7 +654,7 @@ class Tree:
         while current is not None:
             if filter_fun(self[current]):
                 yield current
-            # subtree() hasn't update the predecessor
+            # subtree() hasn't updated the predecessor
             current = self[current].predecessor(self.identifier) if self.root != current else None
 
     def siblings(self, nid):
@@ -672,7 +688,7 @@ class Tree:
                 level = int(level)
                 return sum(1 for node in self.all_nodes() if self.level(node.identifier) == level)
             except (ValueError, InvalidLevelNumber):
-                raise TypeError(f"level should be an integer instead of '{type(level)}'")
+                raise TypeError(f'Level should be an integer instead of \'{type(level)}\'!')
 
     def subtree(self, nid, identifier=None):
         """
@@ -692,16 +708,16 @@ class Tree:
             return st
 
         if nid not in self.nodes:
-            raise NodeIDAbsentError(f"Node '{nid}' is not in the tree!")
+            raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
 
         st.root = nid
         for node_n in self.expand_tree(nid):
             st.nodes.update({self[node_n].identifier: self[node_n]})
-            # define nodes parent/children in this tree
-            # all pointers are the same as copied tree, except the root
+            # Define nodes parent/children in this tree
+            # All pointers are the same as copied tree, except the root
             st[node_n].clone_pointers(self.identifier, st.identifier)
             if node_n == nid:
-                # reset root parent for the new tree
+                # Reset root parent for the new tree
                 st[node_n].set_predecessor(None, st.identifier)
         return st
 
@@ -715,7 +731,7 @@ class Tree:
         """
         cn = self[nid]
 
-        if 'identifier' in attrs:
+        if 'identifier' in attrs:  # However, identifier cannot be None it is better to check containment before poping
             identifier_val = attrs.pop('identifier')
             # Updating node id meets following contraints:
             # * Update node identifier property
@@ -763,8 +779,7 @@ class Tree:
         structure, for constructing the Nodes Stack push and pop nodes
         with additional level info.
 
-        UPDATE: the @key @reverse is present to sort node at each
-        level.
+        UPDATE: the @key @reverse is present to sort node at each level.
         """
         # Factory for proper get_label() function
         if data_property:
@@ -773,21 +788,21 @@ class Tree:
                     return getattr(curr_node.data, data_property)
             else:
                 def get_label(curr_node):
-                    return f"{getattr(curr_node.data, data_property)}[{node.identifier}]"
+                    return f'{getattr(curr_node.data, data_property)}[{node.identifier}]'
         else:
             if idhidden:
                 def get_label(curr_node):
                     return curr_node.tag
             else:
                 def get_label(curr_node):
-                    return f"{curr_node.tag}[{node.identifier}]"
+                    return f'{curr_node.tag}[{node.identifier}]'
 
-        # legacy ordering
+        # Legacy ordering
         if key is None:
             def key(curr_node):
                 return curr_node
 
-        # iter with func
+        # Iter with func
         for pre, node in self.__get(nid, level, filter_fun, key, reverse, line_type):
             label = get_label(node)
             func(f'{pre}{label}')
@@ -843,17 +858,19 @@ class Tree:
         except NodeIDAbsentError:
             print('Tree is empty')
 
-        return "\n".join(reader) + "\n"
+        return '\n'.join(reader) + '\n'
 
     def to_dict(self, nid=None, key=lambda x: x, sort=True, reverse=False, with_data=False):
-        """Transform the whole tree into a dict."""
+        """
+        Transform the whole tree into a dict.
+        """
 
         if nid is None:
             nid = self.root
         ntag = self[nid].tag
-        tree_dict = {ntag: {"children": []}}
+        tree_dict = {ntag: {'children': []}}
         if with_data:
-            tree_dict[ntag]["data"] = self[nid].data
+            tree_dict[ntag]['data'] = self[nid].data
 
         if self[nid].expanded:
             queue = [self[i] for i in self[nid].successors(self.identifier)]
@@ -862,17 +879,21 @@ class Tree:
 
             for elem in queue:
                 dict_form = self.to_dict(elem.identifier, with_data=with_data, sort=sort, reverse=reverse)
-                tree_dict[ntag]["children"].append(dict_form)
-            if len(tree_dict[ntag]["children"]) == 0:
-                tree_dict = self[nid].tag if not with_data else {ntag: {"data": self[nid].data}}
+                tree_dict[ntag]['children'].append(dict_form)
+            if len(tree_dict[ntag]['children']) == 0:
+                tree_dict = self[nid].tag if not with_data else {ntag: {'data': self[nid].data}}
             return tree_dict
 
     def to_json(self, with_data=False, sort=True, reverse=False):
-        """To format the tree in JSON format."""
+        """
+        To format the tree in JSON format.
+        """
         return json.dumps(self.to_dict(with_data=with_data, sort=sort, reverse=reverse))
 
     def to_graphviz(self, filename=None, shape='circle', graph='digraph'):
-        """Exports the tree in the dot format of the graphviz software"""
+        """
+        Exports the tree in the dot format of the graphviz software.
+        """
         nodes, connections = [], []
         if len(self.nodes) > 0:
 
@@ -888,7 +909,7 @@ class Tree:
         # Write nodes and connections to dot format
         is_plain_file = filename is not None
         if is_plain_file:
-            f = open(filename, 'w', encoding='utf-8')
+            f = open(filename, 'w', encoding='UTF-8')
         else:
             f = StringIO()
 

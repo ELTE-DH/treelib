@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 Node structure in treelib.
@@ -26,35 +27,35 @@ class Node:
 
     def __init__(self, tag: Hashable = None, identifier: Hashable = None, expanded: bool = True, data: Any = None):
         """
-        Create a new Node object to be placed inside a Tree object
+        Create a new Node object to be placed inside a Tree object.
         """
 
-        #: if given as a parameter, must be unique (tuple of parent nodes recommended)
+        #: If given as a parameter, must be unique (tuple of parent nodes recommended)
         if identifier is None:
             identifier = str(uuid.uuid1())
         self._identifier = identifier
 
         #: None or something else
-        #: if None, self._identifier will be set to the identifier's value.
-        # The readable node name for human. This attribute can be accessed and
-        # modified with ``.`` and ``=`` operator respectively.
+        #: If None, self._identifier will be set to the identifier's value.
+        # The readable node name for humans. This attribute can be accessed and
+        #  modified with ``.`` and ``=`` operator respectively.
         if tag is None:
             self.tag = self._identifier
         else:
             self.tag = tag
 
-        #: boolean
-        self.expanded = expanded
+        #: Boolean
+        self.expanded: bool = expanded
 
-        #: identifier of the parent's node :
+        #: Identifier of the parent's node :
         self._predecessor = {}
-        #: identifier(s) of the children's node(s) :
+        #: Identifier(s) of the children's node(s) :
         self._successors = defaultdict(list)
 
         #: User payload associated with this node.
         self.data = data
 
-        # for retro-compatibility on bpointer/fpointer
+        # For retro-compatibility on bpointer/fpointer
         self._initial_tree_id = None
 
     def __lt__(self, other):
@@ -78,10 +79,9 @@ class Node:
 
     def successors(self, tree_id):
         """
-        With a getting operator, a list of IDs of node's children is obtained. With
-        a setting operator, the value can be list, set, or dict. For list or set,
-        it is converted to a list type by the package; for dict, the keys are
-        treated as the node IDs.
+        With a getting operator, a list of IDs of node's children is obtained.
+        With a setting operator, the value can be list, set, or dict.
+        For list or set, it is converted to a list type by the package; for dict, the keys are treated as the node IDs.
         """
         return self._successors[tree_id]
 
@@ -119,8 +119,7 @@ class Node:
 
     def update_successors(self, nid, mode=ADD, replace=None, tree_id=None):
         """
-        Update the children list with different modes: addition (Node.ADD or
-        Node.INSERT) and deletion (Node.DELETE).
+        Update the children list with different modes: addition (Node.ADD or Node.INSERT) and deletion (Node.DELETE).
         """
         if nid is None:
             return
@@ -140,8 +139,8 @@ class Node:
     @property
     def identifier(self):
         """
-        The unique ID of a node within the scope of a tree. This attribute can be
-        accessed and modified with ``.`` and ``=`` operator respectively.
+        The unique ID of a node within the scope of a tree. This attribute can be accessed and modified with
+         ``.`` and ``=`` operator respectively.
         """
         return self._identifier
 
