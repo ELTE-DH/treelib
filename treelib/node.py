@@ -134,7 +134,7 @@ class Node:
         f_name = manipulator_lookup.get(mode)
         if f_name is None:
             raise NotImplementedError(f'Unsupported node updating mode {mode}!')
-        return f_name(nid, tree_id, mode, replace)
+        f_name(nid, tree_id, mode, replace)
 
     @property
     def identifier(self):
