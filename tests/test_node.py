@@ -11,7 +11,7 @@ class NodeCase(unittest.TestCase):
 
     def test_initialization(self):
         self.assertEqual(self.node1.tag, "Test One")
-        self.assertEqual(self.node1.identifier, "identifier 1")
+        self.assertEqual(self.node1.nid, "identifier 1")
 
         self.assertEqual(self.node1._predecessor, {})
         self.assertEqual(self.node1._successors, defaultdict(list))
@@ -28,9 +28,9 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(node.__repr__().startswith('Node'))
 
     def test_set_identifier(self):
-        self.node1.identifier = "ID1"
-        self.assertEqual(self.node1.identifier, "ID1")
-        self.node1.identifier = "identifier 1"
+        self.node1.nid = "ID1"
+        self.assertEqual(self.node1.nid, "ID1")
+        self.node1.nid = "identifier 1"
 
     def test_update_successors(self):
         self.node1.update_successors("identifier 2", tree_id="tree 1")

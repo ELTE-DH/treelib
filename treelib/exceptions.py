@@ -7,7 +7,7 @@ class NodePropertyError(Exception):
 
 class NodeIDAbsentError(NodePropertyError):
     """
-    Exception throwed if a node's identifier is unknown
+    Exception throwed if a node's identifier (nid) is unknown
     """
     pass
 
@@ -28,7 +28,7 @@ class MultipleRootError(Exception):
 
 class DuplicatedNodeIdError(Exception):
     """
-    Exception throwed if an identifier already exists in a tree.
+    Exception throwed if a node identifier (nid) already exists in a tree.
     """
     pass
 

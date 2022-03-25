@@ -4,7 +4,7 @@
 """
 Node structure in treelib.
 
-A :class:`Node` object contains basic properties such as node identifier,
+A :class:`Node` object contains basic properties such as node identifier (nid),
 node tag, parent node, children nodes etc., and some operations for a node.
 """
 
@@ -25,18 +25,18 @@ class Node:
     #: Mode constants for routine `update_fpointer()`.
     (ADD, DELETE, REPLACE) = list(range(3))
 
-    def __init__(self, tag: Hashable = None, identifier: Hashable = None, data: Any = None):
+    def __init__(self, tag: Hashable = None, nid: Hashable = None, data: Any = None):
         """
         Create a new Node object to be placed inside a Tree object.
         """
 
         #: If given as a parameter, must be unique (tuple of parent nodes recommended)
-        if identifier is None:
-            identifier = str(uuid.uuid1())
-        self._identifier = identifier
+        if nid is None:
+            nid = str(uuid.uuid1())
+        self._identifier = nid
 
         #: None or something else
-        #: If None, self._identifier will be set to the identifier's value.
+        #: If None, self._identifier will be set to the tree_id's value.
         # The readable node name for humans. This attribute can be accessed and
         #  modified with ``.`` and ``=`` operator respectively.
         if tag is None:
@@ -44,9 +44,9 @@ class Node:
         else:
             self.tag = tag
 
-        #: Identifier of the parent's node :
+        #: Identifier (nid) of the parent's node :
         self._predecessor = {}
-        #: Identifier(s) of the children's node(s) :
+        #: Identifier(s) (nid(s)) of the children's node(s) :
         self._successors = defaultdict(list)
 
         #: User payload associated with this node.
@@ -106,7 +106,7 @@ class Node:
         if nid in self.successors(tree_id):
             self.successors(tree_id).remove(nid)
         else:
-            ValueError(f'Nid {nid} wasn\'t present in fpointer!')
+            ValueError(f'Node identifier ({nid}) was not present in fpointer!')
 
     def _manipulator_replace(self, nid, tree_id, mode=None, replace=None):
         if replace is None:
@@ -133,15 +133,15 @@ class Node:
         f_name(nid, tree_id, mode, replace)
 
     @property
-    def identifier(self):
+    def nid(self):
         """
         The unique ID of a node within the scope of a tree. This attribute can be accessed and modified with
          ``.`` and ``=`` operator respectively.
         """
         return self._identifier
 
-    @identifier.setter
-    def identifier(self, value):
+    @nid.setter
+    def nid(self, value):
         """
         Set the value of `_identifier`.
         """
@@ -183,7 +183,7 @@ class Node:
         name = self.__class__.__name__
         kwargs = [
             f'tag={self.tag}',
-            f'identifier={self.identifier}',
+            f'nid={self.nid}',
             f'data={self.data}',
         ]
         return f'{name}({", ".join(kwargs)})'
