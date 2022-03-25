@@ -13,7 +13,6 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1.tag, "Test One")
         self.assertEqual(self.node1.identifier, "identifier 1")
 
-        self.assertEqual(self.node1.expanded, True)
         self.assertEqual(self.node1._predecessor, {})
         self.assertEqual(self.node1._successors, defaultdict(list))
         self.assertEqual(self.node1.data, None)

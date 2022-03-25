@@ -23,9 +23,9 @@ class Node:
     """
 
     #: Mode constants for routine `update_fpointer()`.
-    (ADD, DELETE, INSERT, REPLACE) = list(range(4))
+    (ADD, DELETE, REPLACE) = list(range(3))
 
-    def __init__(self, tag: Hashable = None, identifier: Hashable = None, expanded: bool = True, data: Any = None):
+    def __init__(self, tag: Hashable = None, identifier: Hashable = None, data: Any = None):
         """
         Create a new Node object to be placed inside a Tree object.
         """
@@ -43,9 +43,6 @@ class Node:
             self.tag = self._identifier
         else:
             self.tag = tag
-
-        #: Boolean
-        self.expanded: bool = expanded
 
         #: Identifier of the parent's node :
         self._predecessor = {}
@@ -127,7 +124,6 @@ class Node:
         manipulator_lookup = {
             self.ADD: self._manipulator_append,
             self.DELETE: self._manipulator_delete,
-            self.INSERT: self._manipulator_append,  # Removed deprecated value
             self.REPLACE: self._manipulator_replace
         }
 

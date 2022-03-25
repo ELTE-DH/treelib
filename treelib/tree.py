@@ -13,6 +13,7 @@ is required to create the tree.
 import json
 import uuid
 from copy import deepcopy
+from functools import partial
 
 from io import StringIO
 
@@ -127,55 +128,6 @@ class Tree:
     def __contains__(self, identifier):
         return identifier in self.nodes
 
-    def __get(self, nid, level, filter_fun, key, reverse, line_type):
-        # Default filter
-        if filter_fun is None:
-            def filter_fun(_):  # node
-                return True
-
-        dt = self._dt[line_type]
-
-        return self.__get_iter(nid, level, filter_fun, key, reverse, dt, [])
-
-    def __get_iter(self, nid, level, filter_fun, key, reverse, dt, is_last):
-        dt_vertical_line, dt_line_box, dt_line_corner = dt
-
-        if nid is None:
-            nid = self.root
-
-        node = self[nid]
-
-        if level == self.ROOT:
-            yield '', node
-        else:
-            lines = []
-            for curr_is_last in is_last[0:-1]:
-                if curr_is_last:
-                    line = ' ' * 4
-                else:
-                    line = dt_vertical_line + ' ' * 3
-                lines.append(line)
-
-            if is_last[-1]:
-                lines.append(dt_line_corner)
-            else:
-                lines.append(dt_line_box)
-
-            yield ''.join(lines), node
-
-        if filter_fun(node) and node.expanded:
-            children = [self[i] for i in node.successors(self.identifier) if filter_fun(self[i])]
-            idxlast = len(children) - 1
-            if key is not None:
-                children.sort(key=key, reverse=reverse)
-            elif reverse:
-                children.reverse()
-
-            for idx, child in enumerate(children):
-                is_last.append(idx == idxlast)
-                yield from self.__get_iter(child.identifier, level + 1, filter_fun, key, reverse, dt, is_last)
-                is_last.pop()
-
     def add_node(self, node, parent=None):
         """
         Add a new node object to the tree and make the parent as the root by default.
@@ -250,7 +202,7 @@ class Tree:
         self.add_node(node, parent)
         return node
 
-    def level(self, nid, filter_fun=None):
+    def level(self, nid, filter_fun=lambda x: True):
         """
         Get the node level in this tree.
         The level is an integer starting with '0' at the root.
@@ -531,7 +483,7 @@ class Tree:
         if nid is not None:
             self[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.identifier)
 
-    def paths_to_leaves(self):
+    def paths_to_leaves(self, filter_fun=lambda x: True):
         """
         Use this function to get the identifiers allowing to go from the root node to each leaf.
 
@@ -563,7 +515,7 @@ class Tree:
         res = []
 
         for leaf in self.leaves():
-            node_ids = [nid for nid in self.rsearch(leaf.identifier)]
+            node_ids = [nid for nid in self.rsearch(leaf.identifier, filter_fun)]
             node_ids.reverse()
             res.append(tuple(node_ids))
 
@@ -639,7 +591,7 @@ class Tree:
             self[parent].update_successors(nid, self.node_class.DELETE, tree_id=self.identifier)
         return st
 
-    def rsearch(self, nid, filter_fun=None):
+    def rsearch(self, nid, filter_fun=lambda x: True):
         """
         Traverse the tree branch along the branch from nid to its ancestors (until root).
 
@@ -650,9 +602,6 @@ class Tree:
             return
         if nid not in self.nodes:
             raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
-
-        if filter_fun is None:
-            filter_fun = lambda x: True
 
         current = nid
         while current is not None:
@@ -754,8 +703,59 @@ class Tree:
         for attr, val in attrs.items():
             setattr(cn, attr, val)
 
-    def __print_backend(self, nid=None, level=ROOT, filter_fun=None, key=None, reverse=False, line_type='ascii-ex',
-                        get_label_fun=lambda node: node.tag):
+    def __get(self, nid, level, filter_fun, key, reverse, line_type):
+        # Set sort key and reversing if needed
+        if key is None:
+            if reverse:
+                key_fun = partial(reversed)
+            else:
+                key_fun = partial(lambda x: x)  # Do not sort at all!
+        else:
+            key_fun = partial(sorted, key=key, reverse=reverse)
+
+        # Set line types
+        line_elems = self._dt.get(line_type)
+        if line_elems is None:
+            raise ValueError(f'Undefined line type \'{line_type}\' must choose from {set(self._dt)}')
+
+        return self.__get_iter(nid, level, filter_fun, key_fun, *line_elems, [])
+
+    def __get_iter(self, nid, level, filter_fun, sort_fun, dt_vertical_line, dt_line_box, dt_line_corner, is_last):
+        if nid is None:
+            nid = self.root
+
+        node = self[nid]
+
+        if level == self.ROOT:
+            yield '', node
+        else:
+            lines = []
+            for curr_is_last in is_last[0:-1]:
+                if curr_is_last:
+                    line = ' ' * 4
+                else:
+                    line = dt_vertical_line + ' ' * 3
+                lines.append(line)
+
+            if is_last[-1]:
+                lines.append(dt_line_corner)
+            else:
+                lines.append(dt_line_box)
+
+            yield ''.join(lines), node
+
+        if filter_fun(node):
+            children = [self[i] for i in node.successors(self.identifier) if filter_fun(self[i])]
+            idxlast = len(children) - 1
+
+            for idx, child in enumerate(sort_fun(children)):
+                is_last.append(idx == idxlast)
+                yield from self.__get_iter(child.identifier, level + 1, filter_fun, sort_fun,
+                                           dt_vertical_line, dt_line_box, dt_line_corner, is_last)
+                is_last.pop()
+
+    def __print_backend(self, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+                        line_type='ascii-ex', get_label_fun=lambda node: node.tag):
         """
         Another implementation of printing tree using Stack Print tree structure in hierarchy style.
         The @key @reverse is present to sort node at each level.
@@ -776,11 +776,6 @@ class Tree:
         A more elegant way to achieve this function using Stack structure, for constructing the Nodes Stack
          push and pop nodes with additional level info.
         """
-        # Legacy ordering
-        if key is None:  # TODO why this can not be substituted with a lambda expression?
-            def key(curr_node):
-                return curr_node
-
         # Iter with func
         for pre, node in self.__get(nid, level, filter_fun, key, reverse, line_type):
             label = get_label_fun(node)
@@ -789,8 +784,8 @@ class Tree:
     def __str__(self):
         return self.show()
 
-    def show(self, nid=None, level=ROOT, filter_fun=None, key=None, reverse=False, line_type='ascii-ex',
-             get_label_fun=lambda node: node.tag):
+    def show(self, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+             line_type='ascii-ex', get_label_fun=lambda node: node.tag):
         """
         Print the tree structure in hierarchy style.
 
@@ -820,7 +815,7 @@ class Tree:
 
         return '\n'.join(reader) + '\n'
 
-    def save2file(self, filename, nid=None, level=ROOT, filter_fun=None, key=None, reverse=False,
+    def save2file(self, filename, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
                   line_type='ascii-ex', get_label_fun=lambda node: node.tag):
         """
         Save the tree into file for offline analysis.
@@ -841,17 +836,16 @@ class Tree:
         if with_data:
             tree_dict[ntag]['data'] = self[nid].data
 
-        if self[nid].expanded:
-            queue = [self[i] for i in self[nid].successors(self.identifier)]
-            if sort:
-                queue.sort(key=key, reverse=reverse)
+        queue = [self[i] for i in self[nid].successors(self.identifier)]
+        if sort:
+            queue.sort(key=key, reverse=reverse)
 
-            for elem in queue:
-                dict_form = self.to_dict(elem.identifier, with_data=with_data, sort=sort, reverse=reverse)
-                tree_dict[ntag]['children'].append(dict_form)
-            if len(tree_dict[ntag]['children']) == 0:
-                tree_dict = self[nid].tag if not with_data else {ntag: {'data': self[nid].data}}
-            return tree_dict
+        for elem in queue:
+            dict_form = self.to_dict(elem.identifier, with_data=with_data, sort=sort, reverse=reverse)
+            tree_dict[ntag]['children'].append(dict_form)
+        if len(tree_dict[ntag]['children']) == 0:
+            tree_dict = self[nid].tag if not with_data else {ntag: {'data': self[nid].data}}
+        return tree_dict
 
     def to_json(self, with_data=False, sort=True, reverse=False):
         """
