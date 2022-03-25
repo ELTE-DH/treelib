@@ -70,11 +70,12 @@ class Tree:
             'ascii-emh': ('\u2502', '\u255e\u2550\u2550 ', '\u2558\u2550\u2550 '),
         }
 
+    # HELPER FUNCTIONS -------------------------------------------------------------------------------------------------
     def _clone(self, tree_id=None, with_tree=False, deep=False):
         """
         Clone current instance, with or without tree.
 
-        Method intended to be overloaded, to avoid rewriting whole "subtree" and "remove_subtree" methods when
+        Method intended to be overloaded, to avoid rewriting whole ``subtree`` and ``remove_subtree`` methods when
         inheriting from Tree.
         >>> class TreeWithComposition(Tree):
         >>>     def __init__(self, tree_description, tree=None, deep=False, tree_id=None):
@@ -95,6 +96,42 @@ class Tree:
         """
         return self.__class__(tree_id=tree_id, tree=self if with_tree else None, deep=deep)
 
+    @staticmethod
+    def _create_sort_fun(key, reverse):
+        if key is None:
+            if reverse:
+                key_fun = reversed
+            else:
+                key_fun = partial(lambda x: x)  # Do not sort at all!
+        else:
+            key_fun = partial(sorted, key=key, reverse=reverse)
+        return key_fun
+
+    def _check_nodeid_in_tree(self, nid):
+        if nid not in self.nodes:
+            raise NodeIDAbsentError(f'Node ({nid}) is not in the tree!')
+
+    def _get_nid(self, node):
+        """
+        Get the node ID for the given node or pass node ID (the inverse of ``get_node``, used internally)
+        """
+        if isinstance(node, self.node_class):
+            nid = node.nid
+        else:
+            nid = node
+        return nid
+
+    # READER FUNCTIONS -------------------------------------------------------------------------------------------------
+    def get_node(self, nid):
+        """
+        Get the object of the node with ID of ``nid``.
+
+        An alternative way is using ``__getitem__`` ('[]') operation on the tree.
+        But small difference exists between them: ``get_node()`` will return None
+        if ``nid`` is absent, whereas '[]' will raise ``KeyError``.
+        """
+        return self.nodes.get(nid, None)
+
     def all_nodes(self):
         """
         Returns all nodes in an iterator.
@@ -103,48 +140,25 @@ class Tree:
 
     def size(self, level=None):
         """
-        Get the number of nodes of the whole tree if @level is not given.
+        Get the number of nodes of the whole tree if ``level`` is not given.
         Otherwise, the total number of nodes at specific level is returned.
         0 is returned if the tree is not deep enough.
 
-        @param level The level number in the tree. It must be greater or equal to 0.
+        :param level: The level number in the tree. It must be greater or equal to 0.
         """
         if level is None:
             return len(self.nodes)
         else:
             return sum(1 for node in self.nodes.values() if self.level(node.nid) == level)
 
-    def _check_nodeid_in_tree(self, nid):
-        if nid not in self.nodes:
-            raise NodeIDAbsentError(f'Node ({nid}) is not in the tree!')
-
     def filter_nodes(self, func):
         """
         Filters all nodes by function.
 
-        :param func: is passed one node as an argument and that node is included if function returns true,
-        :return: a filter iterator of the node in python 3 or a list of the nodes in python 2.
+        :param func: is passed one node as an argument and that node is included if function returns true.
+        :return: a filter iterator of the node
         """
         return filter(func, self.nodes.values())
-
-    def _get_nid(self, node):
-        """
-        Get the node ID for the given node or pass node ID (the inverse of get_node, used internally)
-        """
-        if isinstance(node, self.node_class):
-            nid = node.nid
-        else:
-            nid = node
-        return nid
-
-    def get_node(self, nid):
-        """
-        Get the object of the node with ID of ``nid``.
-
-        An alternative way is using getitem ('[]') operation on the tree. But small difference exists between them:
-        ``get_node()`` will return None if ``nid`` is absent, whereas '[]' will raise ``KeyError``.
-        """
-        return self.nodes.get(nid, None)
 
     def __getitem__(self, nid):
         """
@@ -162,12 +176,15 @@ class Tree:
         return len(self.nodes)
 
     def __contains__(self, node):
-        nid = self._get_nid(node)  # TODO Check node's other properties!
-        return nid in self.nodes
+        if isinstance(node, self.node_class):
+            nid = node.nid
+            return self.nodes.get(nid) == node
+        else:
+            return node in self.nodes
 
     def is_ancestor(self, ancestor, grandchild):
         """
-        Check if the @ancestor the preceding nodes of @grandchild.
+        Check if the ``ancestor`` the preceding nodes of ``grandchild``.
 
         :param ancestor: the node identifier (nid) or Node instance
         :param grandchild: the node identifier (nid) or Node instance
@@ -209,8 +226,8 @@ class Tree:
             raise InvalidLevelNumber(f'Descendant level (level {self.level(descendant.nid)}) '
                                      f'must be greater than its parent\'s level (level {level})!')
 
-        ascendant_level = self.level(ascendant)
         # Ascend to the appropriate level
+        ascendant_level = self.level(ascendant)
         while ascendant is not None:
             if ascendant_level == level:
                 return self.nodes[ascendant]
@@ -236,9 +253,9 @@ class Tree:
 
     def siblings(self, node, lookup_nodes=False):
         """
-        Return the siblings of given @node or node ID.
+        Return the siblings of given ``node`` or node ID.
 
-        If @node is root or there are no siblings, an empty list is returned.
+        If ``node`` is root or there are no siblings, an empty list is returned.
         """
         nid = self._get_nid(node)
         if nid == self.root:
@@ -259,7 +276,7 @@ class Tree:
         Get the node level in this tree.
         The level is an integer starting with '0' at the root.
         In other words, the root lives at level '0';
-        @filter params is added to calculate level passing exclusive nodes.
+        ``filter_fun`` param is added to calculate level passing exclusive nodes.
         """
         return sum(1 for _ in self.rsearch(node, filter_fun)) - 1
 
@@ -267,10 +284,10 @@ class Tree:
         """
         Get the maximum level of this tree or the level of the given node.
 
-        @param node Node instance or identifier (nid)
-        @param filter_fun A function to filter the considered leaves when computing depth
-        @return int
-        @throw NodeIDAbsentError
+        :param node: Node instance or identifier (nid)
+        :param filter_fun: A function to filter the considered leaves when computing depth
+        :return int:
+        :throw NodeIDAbsentError:
         """
         if node is None:
             # Get maximum level of this tree
@@ -310,11 +327,11 @@ class Tree:
         Python generator to traverse the tree (or a subtree) with optional node filtering and sorting.
 
         :param node: Node or node ID (nid) from which tree traversal will start. If None tree root will be used.
-        :param mode: Traversal mode, may be either DEPTH, WIDTH or ZIGZAG
-        :param filter_fun: the @filter_fun function is performed on Node object during traversing.
+        :param mode: Traversal mode, may be either ``DEPTH``, ``WIDTH`` or ``ZIGZAG``
+        :param filter_fun: the ``filter_fun`` function is performed on Node object during traversing.
             The traversing will NOT visit those nodes (and their subrtree) which does not pass filtering.
-        :param key: the @key and @reverse are present to sort nodes at each level.
-            If @key is None the function returns nodes in original insertion order.
+        :param key: the ``key`` and ``reverse`` are present to sort nodes at each level.
+            If ``key`` is None the function returns nodes in original insertion order.
         :param reverse: if True reverse ordering.
         :return: Node IDs that satisfy the conditions in the defined order.
         :rtype: generator object
@@ -422,17 +439,6 @@ class Tree:
 
         return res
 
-    @staticmethod
-    def _create_sort_fun(key, reverse):
-        if key is None:
-            if reverse:
-                key_fun = reversed
-            else:
-                key_fun = partial(lambda x: x)  # Do not sort at all!
-        else:
-            key_fun = partial(sorted, key=key, reverse=reverse)
-        return key_fun
-
     # MODIFYING FUNCTIONS ----------------------------------------------------------------------------------------------
     def add_node(self, node, parent=None):
         """
@@ -465,7 +471,7 @@ class Tree:
 
     def create_node(self, tag=None, nid=None, parent=None, data=None):
         """
-        Create a child node for given @parent node. If node identifier (``nid``) is absent,
+        Create a child node for given ``parent`` node. If node identifier (``nid``) is absent,
          a UUID will be generated automatically.
         """
         node = self.node_class(tag=tag, nid=nid, data=data)
@@ -524,7 +530,7 @@ class Tree:
 
     def move_node(self, source, destination):
         """
-        Move node @source from its parent to another parent @destination.
+        Move node ``source`` from its parent to another parent ``destination``.
         """
         if source not in self.nodes or destination not in self.nodes:
             raise NodeIDAbsentError
@@ -540,7 +546,7 @@ class Tree:
 
     def merge(self, nid, new_tree, deep=False):
         """
-        Patch @new_tree on current tree by pasting new_tree root children on current tree @nid node.
+        Patch ``new_tree`` on current tree by pasting new_tree root children on current tree ``nid`` node.
 
         Consider the following tree:
         >>> current = Tree()
@@ -564,8 +570,8 @@ class Tree:
             └── D
                 └── D1
 
-        Note: if current tree is empty and nid is None, the new_tree root will be used as root on current tree.
-         In all other cases new_tree root is not pasted.
+        Note: if current tree is empty and nid is None, the ``new_tree`` root will be used as root on current tree.
+         In all other cases ``new_tree`` root is not pasted.
         """
         if new_tree.root is None:
             return
@@ -582,8 +588,8 @@ class Tree:
 
     def paste(self, nid, new_tree, deep=False):
         """
-        Paste a @new_tree to the original one by linking the root of new tree to given node (nid).
-        Add @deep for the deep copy of pasted tree.
+        Paste a ``new_tree`` to the original one by linking the root of new tree to given node (nid).
+        Add ``deep`` for the deep copy of pasted tree.
         """
         assert isinstance(new_tree, Tree)
 
@@ -764,7 +770,7 @@ class Tree:
                         line_type='ascii-ex', get_label_fun=lambda node: node.tag):
         """
         Another implementation of printing tree using Stack Print tree structure in hierarchy style.
-        The @key @reverse is present to sort node at each level.
+        The ``key`` ``reverse`` is present to sort node at each level.
 
         For example:
 
