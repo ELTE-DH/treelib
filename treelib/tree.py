@@ -154,8 +154,8 @@ class Tree:
 
         self.nodes.update({node.identifier: node})
         if pid is not None:
-            self[pid].update_successors(node.identifier, self.node_class.ADD, tree_id=self.identifier)
-        self[node.identifier].set_predecessor(pid, self.identifier)
+            self.nodes[pid].update_successors(node.identifier, self.node_class.ADD, tree_id=self.identifier)
+        self.nodes[node.identifier].set_predecessor(pid, self.identifier)
         node.set_initial_tree_id(self.identifier)
 
     def ancestor(self, nid, level=None):
@@ -166,14 +166,14 @@ class Tree:
         if nid not in self.nodes:
             raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
-        descendant = self[nid]
-        ascendant = self[nid].predecessor(self.identifier)
+        descendant = self.nodes[nid]
+        ascendant = self.nodes[nid].predecessor(self.identifier)
         ascendant_level = self.level(ascendant)
 
         if level is None:
             return ascendant  # parent
         elif nid == self.root:
-            return self[nid]  # root -> root
+            return self.nodes[nid]  # root -> root
         elif level >= self.level(descendant.identifier):
             raise InvalidLevelNumber(f'Descendant level (level {self.level(descendant.identifier)}) '
                                      f'must be greater than its ancestor\'s level (level {level})!')
@@ -181,10 +181,10 @@ class Tree:
         # Ascend to the appropriate level
         while ascendant is not None:
             if ascendant_level == level:
-                return self[ascendant]
+                return self.nodes[ascendant]
             else:
                 descendant = ascendant
-                ascendant = self[descendant].predecessor
+                ascendant = self.nodes[descendant].predecessor
                 ascendant_level = self.level(ascendant)
 
     def children(self, nid):
@@ -192,7 +192,7 @@ class Tree:
         Return the children (Node) list of nid.
         Empty list is returned if nid does not exist
         """
-        return [self[i] for i in self.is_branch(nid)]
+        return [self.nodes[i] for i in self.is_branch(nid)]
 
     def create_node(self, tag=None, identifier=None, parent=None, data=None):
         """
@@ -263,15 +263,16 @@ class Tree:
         if nid not in self.nodes:
             raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
-        if filter_fun(self[nid]):
+        if filter_fun(self.nodes[nid]):
             yield nid
-            queue = [self[i] for i in self[nid].successors(self.identifier) if filter_fun(self[i])]
+            queue = [self.nodes[i] for i in self.nodes[nid].successors(self.identifier) if filter_fun(self.nodes[i])]
             if mode in {self.DEPTH, self.WIDTH}:
                 if sorting:
                     queue.sort(key=key, reverse=reverse)
                 while len(queue) > 0:
                     yield queue[0].identifier
-                    expansion = [self[i] for i in queue[0].successors(self.identifier) if filter_fun(self[i])]
+                    expansion = [self.nodes[i] for i in queue[0].successors(self.identifier)
+                                 if filter_fun(self.nodes[i])]
                     if sorting:
                         expansion.sort(key=key, reverse=reverse)
                     if mode is self.DEPTH:
@@ -285,7 +286,8 @@ class Tree:
                 stack = stack_bw = queue
                 direction = False
                 while len(stack) > 0:
-                    expansion = [self[i] for i in stack[0].successors(self.identifier) if filter_fun(self[i])]
+                    expansion = [self.nodes[i] for i in stack[0].successors(self.identifier)
+                                 if filter_fun(self.nodes[i])]
                     yield stack.pop(0).identifier
                     if direction:
                         expansion.reverse()
@@ -321,7 +323,7 @@ class Tree:
             raise NodeIDAbsentError(f'Node \'{nid}\' is not in the tree!')
 
         try:
-            fpointer = self[nid].successors(self.identifier)
+            fpointer = self.nodes[nid].successors(self.identifier)
         except KeyError:
             fpointer = []
         return fpointer
@@ -337,8 +339,8 @@ class Tree:
                     leaves.append(node)
         else:
             for node in self.expand_tree(nid):
-                if self[node].is_leaf(self.identifier):
-                    leaves.append(self[node])
+                if self.nodes[node].is_leaf(self.identifier):
+                    leaves.append(self.nodes[node])
         return leaves
 
     def link_past_node(self, nid):
@@ -353,13 +355,13 @@ class Tree:
         if self.root == nid:
             raise LinkPastRootNodeError('Cannot link past the root node, delete it with remove_node()!')
         # Get the parent of the node we are linking past
-        parent_node = self[self[nid].predecessor(self.identifier)]
+        parent_node = self.nodes[self.nodes[nid].predecessor(self.identifier)]
         # Set the children of the node to the parent
-        for child in self[nid].successors(self.identifier):
-            self[child].set_predecessor(parent_node.identifier, self.identifier)
+        for child in self.nodes[nid].successors(self.identifier):
+            self.nodes[child].set_predecessor(parent_node.identifier, self.identifier)
         # Link the children to the parent
 
-        for identifier in self[nid].successors(self.identifier):
+        for identifier in self.nodes[nid].successors(self.identifier):
             parent_node.update_successors(identifier, tree_id=self.identifier)
         # Delete the node
         parent_node.update_successors(nid, mode=parent_node.DELETE, tree_id=self.identifier)
@@ -374,12 +376,12 @@ class Tree:
         elif self.is_ancestor(source, destination):
             raise LoopError
 
-        parent = self[source].predecessor(self.identifier)
+        parent = self.nodes[source].predecessor(self.identifier)
         if parent is not None:
-            self[parent].update_successors(source, self.node_class.DELETE, tree_id=self.identifier)
+            self.nodes[parent].update_successors(source, self.node_class.DELETE, tree_id=self.identifier)
         if destination is not None:
-            self[destination].update_successors(source, self.node_class.ADD, tree_id=self.identifier)
-        self[source].set_predecessor(destination, self.identifier)
+            self.nodes[destination].update_successors(source, self.node_class.ADD, tree_id=self.identifier)
+        self.nodes[source].set_predecessor(destination, self.identifier)
 
     def is_ancestor(self, ancestor, grandchild):
         """
@@ -390,13 +392,13 @@ class Tree:
         :return: True or False
         """
         child = grandchild
-        parent = self[grandchild].predecessor(self.identifier)
+        parent = self.nodes[grandchild].predecessor(self.identifier)
         while parent is not None:
             if parent == ancestor:
                 return True
             else:
-                child = self[child].predecessor(self.identifier)
-                parent = self[child].predecessor(self.identifier)
+                child = self.nodes[child].predecessor(self.identifier)
+                parent = self.nodes[child].predecessor(self.identifier)
         return False
 
     def parent(self, nid):
@@ -406,11 +408,11 @@ class Tree:
         if nid not in self.nodes:
             raise NodeIDAbsentError('Node \'{nid}\' is not in the tree!')
 
-        pid = self[nid].predecessor(self.identifier)
+        pid = self.nodes[nid].predecessor(self.identifier)
         if pid is None or pid not in self.nodes:
             return None
 
-        return self[pid]
+        return self.nodes[pid]
 
     def merge(self, nid, new_tree, deep=False):
         """
@@ -479,9 +481,9 @@ class Tree:
             self.nodes.update({cid: node})
             node.clone_pointers(new_tree.identifier, self.identifier)
 
-        self[new_tree.root].set_predecessor(nid, self.identifier)
+        self.nodes[new_tree.root].set_predecessor(nid, self.identifier)
         if nid is not None:
-            self[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.identifier)
+            self.nodes[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.identifier)
 
     def paths_to_leaves(self, filter_fun=lambda x: True):
         """
@@ -528,7 +530,7 @@ class Tree:
         if identifier not in self.nodes:
             raise NodeIDAbsentError(f'Node \'{identifier}\' is not in the tree!')
 
-        parent = self[identifier].predecessor(self.identifier)
+        parent = self.nodes[identifier].predecessor(self.identifier)
 
         # Remove node and its children
         removed = list(self.expand_tree(identifier))
@@ -536,15 +538,15 @@ class Tree:
         for nid in removed:
             if nid == self.root:
                 self.root = None
-            self[nid].set_predecessor(None, self.identifier)
+            self.nodes[nid].set_predecessor(None, self.identifier)
             if nid is not None:
-                for cid in self[nid].successors(self.identifier):
-                    self[nid].update_successors(cid, self.node_class.DELETE, tree_id=self.identifier)
+                for cid in self.nodes[nid].successors(self.identifier):
+                    self.nodes[nid].update_successors(cid, self.node_class.DELETE, tree_id=self.identifier)
 
         # Update parent info
         if parent is not None:
-            self[parent].update_successors(identifier, self.node_class.DELETE, tree_id=self.identifier)
-        self[identifier].set_predecessor(None, self.identifier)
+            self.nodes[parent].update_successors(identifier, self.node_class.DELETE, tree_id=self.identifier)
+        self.nodes[identifier].set_predecessor(None, self.identifier)
 
         for nid in removed:
             self.nodes.pop(nid)
@@ -576,7 +578,7 @@ class Tree:
         st.root = nid
 
         # In original tree, the removed nid will be unreferenced from its parents children
-        parent = self[nid].predecessor(self.identifier)
+        parent = self.nodes[nid].predecessor(self.identifier)
 
         removed = list(self.expand_tree(nid))
         for id_ in removed:
@@ -588,7 +590,7 @@ class Tree:
             if id_ == nid:
                 st[id_].set_predecessor(None, st.identifier)
         if parent is not None:
-            self[parent].update_successors(nid, self.node_class.DELETE, tree_id=self.identifier)
+            self.nodes[parent].update_successors(nid, self.node_class.DELETE, tree_id=self.identifier)
         return st
 
     def rsearch(self, nid, filter_fun=lambda x: True):
@@ -605,11 +607,11 @@ class Tree:
 
         current = nid
         while current is not None:
-            if filter_fun(self[current]):
+            if filter_fun(self.nodes[current]):
                 yield current
             # subtree() hasn't updated the predecessor
             if self.root != current:
-                current = self[current].predecessor(self.identifier)
+                current = self.nodes[current].predecessor(self.identifier)
             else:
                 current = None
 
@@ -622,8 +624,8 @@ class Tree:
         siblings = []
 
         if nid != self.root:
-            pid = self[nid].predecessor(self.identifier)
-            siblings = [self[i] for i in self[pid].successors(self.identifier) if i != nid]
+            pid = self.nodes[nid].predecessor(self.identifier)
+            siblings = [self.nodes[i] for i in self.nodes[pid].successors(self.identifier) if i != nid]
 
         return siblings
 
@@ -655,7 +657,7 @@ class Tree:
 
         st.root = nid
         for node_n in self.expand_tree(nid):
-            st.nodes.update({self[node_n].identifier: self[node_n]})
+            st.nodes.update({self.nodes[node_n].identifier: self.nodes[node_n]})
             # Define nodes parent/children in this tree
             # All pointers are the same as copied tree, except the root
             st[node_n].clone_pointers(self.identifier, st.identifier)
@@ -676,7 +678,7 @@ class Tree:
         :param attrs: attribute pairs recognized by Node object
         :return: None
         """
-        cn = self[nid]  # TODO check if nid is None?
+        cn = self.nodes[nid]  # TODO check if nid is None?
 
         if 'identifier' in attrs:  # However, identifier cannot be None it is better to check containment before poping
             identifier_val = attrs.pop('identifier')
@@ -690,11 +692,12 @@ class Tree:
             # * Update parent's followers
             pred_id = cn.predecessor(self.identifier)
             if pred_id is not None:
-                self[pred_id].update_successors(nid, self.node_class.REPLACE, identifier_val, tree_id=self.identifier)
+                self.nodes[pred_id].update_successors(nid, self.node_class.REPLACE, identifier_val,
+                                                      tree_id=self.identifier)
 
             # * Update children's parents
             for fp in cn.successors(self.identifier):
-                self[fp].set_predecessor(identifier_val, self.identifier)
+                self.nodes[fp].set_predecessor(identifier_val, self.identifier)
 
             # * Update tree root if necessary
             if self.root == nid:
@@ -707,7 +710,7 @@ class Tree:
         # Set sort key and reversing if needed
         if key is None:
             if reverse:
-                key_fun = partial(reversed)
+                key_fun = reversed
             else:
                 key_fun = partial(lambda x: x)  # Do not sort at all!
         else:
@@ -724,7 +727,7 @@ class Tree:
         if nid is None:
             nid = self.root
 
-        node = self[nid]
+        node = self.nodes[nid]
 
         if level == self.ROOT:
             yield '', node
@@ -745,7 +748,7 @@ class Tree:
             yield ''.join(lines), node
 
         if filter_fun(node):
-            children = [self[i] for i in node.successors(self.identifier) if filter_fun(self[i])]
+            children = [self.nodes[i] for i in node.successors(self.identifier) if filter_fun(self.nodes[i])]
             idxlast = len(children) - 1
 
             for idx, child in enumerate(sort_fun(children)):
@@ -831,12 +834,12 @@ class Tree:
 
         if nid is None:
             nid = self.root
-        ntag = self[nid].tag
+        ntag = self.nodes[nid].tag
         tree_dict = {ntag: {'children': []}}
         if with_data:
-            tree_dict[ntag]['data'] = self[nid].data
+            tree_dict[ntag]['data'] = self.nodes[nid].data
 
-        queue = [self[i] for i in self[nid].successors(self.identifier)]
+        queue = [self.nodes[i] for i in self.nodes[nid].successors(self.identifier)]
         if sort:
             queue.sort(key=key, reverse=reverse)
 
@@ -844,7 +847,7 @@ class Tree:
             dict_form = self.to_dict(elem.identifier, with_data=with_data, sort=sort, reverse=reverse)
             tree_dict[ntag]['children'].append(dict_form)
         if len(tree_dict[ntag]['children']) == 0:
-            tree_dict = self[nid].tag if not with_data else {ntag: {'data': self[nid].data}}
+            tree_dict = self.nodes[nid].tag if not with_data else {ntag: {'data': self.nodes[nid].data}}
         return tree_dict
 
     def to_json(self, with_data=False, sort=True, reverse=False):
@@ -861,8 +864,8 @@ class Tree:
         if len(self.nodes) > 0:
 
             for n in self.expand_tree(mode=self.WIDTH):
-                nid = self[n].identifier
-                state = f'"{nid}" [label="{self[n].tag}", shape={shape}]'
+                nid = self.nodes[n].identifier
+                state = f'"{nid}" [label="{self.nodes[n].tag}", shape={shape}]'
                 nodes.append(state)
 
                 for c in self.children(nid):
