@@ -58,7 +58,7 @@ class Node:
     def __lt__(self, other):
         return self.tag < other.tag
 
-    def set_initial_tree_id(self, tree_id):
+    def set_initial_tree_id(self, tree_id):  # TODO this must be somthing related with one node in multiple trees!
         if self._initial_tree_id is None:
             self._initial_tree_id = tree_id
 

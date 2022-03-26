@@ -122,7 +122,7 @@ class TreeCase(unittest.TestCase):
             if nid == self.tree.root:
                 self.assertEqual(self.tree.parent(nid), None)
             else:
-                for level in range(self.tree.level(nid) - 1, 0, -1):
+                for level in range(self.tree.depth(nid) - 1, 0, -1):
                     self.assertEqual(self.tree.parent(nid, level=level) in self.tree.all_nodes(), True)
 
     def test_children(self):
@@ -185,7 +185,7 @@ class TreeCase(unittest.TestCase):
         leaves = self.tree.leaves()
         for nid in self.tree.expand_tree():
             self.assertEqual((self.tree[nid].is_leaf()) == (self.tree[nid] in leaves), True)
-        leaves = self.tree.leaves(nid='jane')
+        leaves = self.tree.leaves(node='jane')
         for nid in self.tree.expand_tree(node='jane'):
             self.assertEqual(self.tree[nid].is_leaf() == (self.tree[nid] in leaves), True)
 
@@ -196,7 +196,7 @@ class TreeCase(unittest.TestCase):
                 (self.tree[nid].is_leaf('tree 1')) == (self.tree[nid] in leaves),
                 True
             )
-        leaves = self.tree.leaves(nid='jane')
+        leaves = self.tree.leaves(node='jane')
         for nid in self.tree.expand_tree(node='jane'):
             self.assertEqual(self.tree[nid].is_leaf('tree 1') == (self.tree[nid] in leaves), True)
 
@@ -418,9 +418,9 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(subtree_copy.parent('jane') is None, True)
         subtree_copy['jane'].tag = 'Sweeti'
         self.assertEqual(self.tree['jane'].tag == 'Jane', True)
-        self.assertEqual(subtree_copy.level('diane'), 1)
-        self.assertEqual(subtree_copy.level('jane'), 0)
-        self.assertEqual(self.tree.level('jane'), 1)
+        self.assertEqual(subtree_copy.depth('diane'), 1)
+        self.assertEqual(subtree_copy.depth('jane'), 0)
+        self.assertEqual(self.tree.depth('jane'), 1)
 
     def test_remove_subtree(self):
         subtree_shallow = self.tree.remove_subtree('jane')
@@ -470,10 +470,11 @@ class TreeCase(unittest.TestCase):
             sys.stdout = sys.__stdout__  # Stops from printing to console
     """
 
-    def test_level(self):
-        self.assertEqual(self.tree.level('hárry'),  0)
+    def test_depth(self):
+        self.assertEqual(self.tree.depth('hárry'),  0)
         depth = self.tree.depth()
-        self.assertEqual(self.tree.level('diane'),  depth)
+        self.assertEqual(self.tree.depth('diane'),  depth)
+        # TODO should raise excepiton as subtree is pruned!
         self.assertEqual(self.tree.level('diane', lambda x: x.nid != 'jane'), depth - 1)
 
     def test_size(self):
@@ -645,9 +646,9 @@ Hárry
         t1.paste(n1.nid, t3)
         self.assertEqual(t1.to_dict(), {'A': {'children': ['B', 'C']}})
 
-        self.assertEqual(t1.level(n1.nid), 0)
-        self.assertEqual(t1.level(n2.nid), 1)
-        self.assertEqual(t1.level(n3.nid), 1)
+        self.assertEqual(t1.depth(n1.nid), 0)
+        self.assertEqual(t1.depth(n2.nid), 1)
+        self.assertEqual(t1.depth(n3.nid), 1)
 
     def test_root_removal(self):
         t = Tree()
