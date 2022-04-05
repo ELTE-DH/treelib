@@ -35,7 +35,7 @@ class DuplicatedNodeIdError(Exception):
 
 class LinkPastRootNodeError(Exception):
     """
-    Exception throwed in Tree.link_past_node() if one attempts to "link past" the root node of a tree.
+    Exception throwed in Tree.remove_node() if one attempts to "link past" the root node of a tree.
     """
     pass
 

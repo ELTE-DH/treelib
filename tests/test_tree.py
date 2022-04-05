@@ -91,7 +91,7 @@ class TreeCase(unittest.TestCase):
         self.assertEqual('alien' in self.tree, False)
         self.tree.create_node('Alien', 'alien', parent='jane')
         self.assertEqual('alien' in self.tree, True)
-        self.tree.remove_node('alien')
+        self.tree.remove_subtree('alien')
         self.assertEqual(len(self.tree), 5)
 
     def test_getitem(self):
@@ -127,14 +127,14 @@ class TreeCase(unittest.TestCase):
 
     def test_children(self):
         for nid in self.tree.nodes:
-            children = self.tree.children(nid)
+            children = list(self.tree.children(nid))
             for child in children:
                 self.assertEqual(self.tree[child] in self.tree.all_nodes(), True)
-            children = self.tree.children(nid, lookup_nodes=True)
+            children = list(self.tree.children(nid, lookup_nodes=True))
             for child in children:
                 self.assertEqual(child in self.tree.all_nodes(), True)
         try:
-            self.tree.children('alien')
+            list(self.tree.children('alien'))
         except NodeIDAbsentError:
             pass
         else:
@@ -143,7 +143,7 @@ class TreeCase(unittest.TestCase):
     def test_remove_node(self):
         self.tree.create_node('Jill', 'jill', parent='george')
         self.tree.create_node('Mark', 'mark', parent='jill')
-        self.assertEqual(self.tree.remove_node('jill'), 2)
+        self.assertEqual(self.tree.remove_subtree('jill'), 2)
         self.assertEqual(self.tree.get_node('jill') is None, True)
         self.assertEqual(self.tree.get_node('mark') is None, True)
 
@@ -178,7 +178,7 @@ class TreeCase(unittest.TestCase):
         self.assertRaises(NodeIDAbsentError, self.tree.depth, node)
 
         # Reset the test case
-        self.tree.remove_node('jill')
+        self.tree.remove_subtree('jill')
 
     def test_leaves(self):
         # Retro-compatibility
@@ -204,7 +204,7 @@ class TreeCase(unittest.TestCase):
         self.tree.create_node('Jill', 'jill', parent='hárry')
         self.tree.create_node('Mark', 'mark', parent='jill')
         self.assertEqual('mark' not in self.tree.children('hárry'), True)
-        self.tree.link_past_node('jill')
+        self.tree.remove_node('jill')
         self.assertEqual('mark' in self.tree.children('hárry'), True)
 
     def test_expand_tree(self):
@@ -268,7 +268,7 @@ class TreeCase(unittest.TestCase):
     └── Jill
         └── Mark
 """)
-        self.tree.remove_node('jill')
+        self.tree.remove_subtree('jill')
         self.assertNotIn('jill', self.tree.nodes.keys())
         self.assertNotIn('mark', self.tree.nodes.keys())
         self.tree.show()
@@ -423,12 +423,12 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(self.tree.depth('jane'), 1)
 
     def test_remove_subtree(self):
-        subtree_shallow = self.tree.remove_subtree('jane')
+        subtree_shallow = self.tree.pop_subtree('jane')
         self.assertEqual('jane' not in self.tree.children('hárry'), True)
         self.tree.paste('hárry', subtree_shallow)
 
     def test_remove_subtree_whole_tree(self):
-        self.tree.remove_subtree('hárry')
+        self.tree.pop_subtree('hárry')
         self.assertIsNone(self.tree.root)
         self.assertEqual(len(self.tree.nodes.keys()), 0)
 
@@ -448,7 +448,7 @@ class TreeCase(unittest.TestCase):
         self.tree.create_node('Jill', 'jill', parent='jane',
                               data=Flower('white'))
         self.assertEqual(self.tree['jill'].data.color, 'white')
-        self.tree.remove_node('jill')
+        self.tree.remove_subtree('jill')
 
     # TODO implement with custom function
     """
@@ -655,7 +655,7 @@ Hárry
         t.create_node(nid='root-A')
         self.assertEqual(len(t.nodes.keys()), 1)
         self.assertEqual(t.root, 'root-A')
-        t.remove_node(nid='root-A')
+        t.remove_subtree(node='root-A')
         self.assertEqual(len(t.nodes.keys()), 0)
         self.assertEqual(t.root, None)
         t.create_node(nid='root-B')

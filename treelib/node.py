@@ -157,9 +157,9 @@ class Node:
         # fpointer is a list and would be copied by reference without using deepcopy
         self.set_successors(copy.deepcopy(former_fpointer), tree_id=new_tree_id)
 
-    def reset_pointers(self, tree_id):
-        self.set_predecessor(None, tree_id)
-        self.set_successors([], tree_id=tree_id)
+    def delete_pointers(self, tree_id):
+        self._predecessor.pop(tree_id, None)
+        self._successors.pop(tree_id, None)
 
     def is_leaf(self, tree_id=None):
         """
