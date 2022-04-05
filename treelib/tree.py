@@ -42,7 +42,8 @@ class Tree:
         self.tree_id = tree_id
 
         if node_class is not None:
-            assert issubclass(node_class, Node)
+            if not issubclass(node_class, Node):
+                raise TypeError('node_class should be type of Node or sublcass of Node !')
             self.node_class = node_class
 
         #: Dict of nodes in a tree: {node ID (nid): node_instance}.
@@ -107,19 +108,34 @@ class Tree:
             key_fun = partial(sorted, key=key, reverse=reverse)
         return key_fun
 
-    def _check_nodeid_in_tree(self, nid):
-        if nid not in self.nodes:
-            raise NodeIDAbsentError(f'Node ({nid}) is not in the tree!')
-
     def _get_nid(self, node):
         """
-        Get the node ID (nid) for the given Node instance or pass node ID (the inverse of ``get_node``, used internally)
+        Get the node ID (nid) for the given Node instance or node ID (the inverse of ``get_node``, used internally)
         """
         if isinstance(node, self.node_class):
             nid = node.nid
         else:
-            nid = node  # TODO Should not we check real containment of the node as in contains?
+            nid = node
+
+        if nid not in self.nodes:
+            raise NodeIDAbsentError(f'Node ({nid}) is not in the tree!')
+
         return nid
+
+    def _get_node(self, node):
+        """
+        Get the Node instance for the given Node instance or node ID (similar to ``get_node``, used internally)
+        """
+        if isinstance(node, self.node_class):
+            curr_node = self.nodes.get(node.nid)  # Node is given as parameter and is not found in the tree
+            if curr_node != node:
+                raise NodeIDAbsentError(f'Node ({node}) is not in the tree!')
+        else:
+            curr_node = self.nodes.get(node)  # Node ID (nid) is given as parameter
+            if curr_node is None:
+                raise NodeIDAbsentError(f'Node ({node}) is not in the tree!')
+
+        return curr_node
 
     # SIMPLE READER FUNCTIONS ------------------------------------------------------------------------------------------
     def size(self, level=None):
@@ -132,6 +148,8 @@ class Tree:
         """
         if level is None:
             return len(self.nodes)
+        elif level == 0:
+            return 1  # On the root level it is trivially only one node
         else:
             return sum(1 for node in self.nodes.values() if self.level(node.nid) == level)
 
@@ -146,7 +164,7 @@ class Tree:
 
     def __len__(self):
         """
-        Return the number of node IDs (nid) in the tree
+        Return the number of nodes (node IDs (nid)) in the tree
         """
         return len(self.nodes)
 
@@ -155,7 +173,7 @@ class Tree:
             nid = node.nid
             return self.nodes.get(nid) == node  # Only True if Node instances are equal, node ID (nid) is not enough!
         else:
-            return node in self.nodes
+            return node in self.nodes  # Check if node ID (nid) is in the tree
 
     def is_ancestor(self, ancestor, child):
         """
@@ -165,17 +183,18 @@ class Tree:
         :param child: the node ID (nid) or Node instance
         :return: True or False
         """
-        ancestor_nid = self._get_nid(ancestor)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(ancestor)
-        child = self._get_nid(child)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(child)
+        ancestor_node = self._get_node(ancestor)
+        ancestor_nid = ancestor_node.nid
+        child_node = self._get_node(child)
 
-        parent_nid = self.nodes[child].predecessor(self.tree_id)
+        parent_nid = child_node.predecessor(self.tree_id)
         while parent_nid is not None:  # If parent is None we are at the root node
-            if parent_nid == ancestor_nid:
+            parent_node = self.nodes[parent_nid]
+            if parent_nid == ancestor_nid and parent_node == ancestor_node:
                 return True
             else:
-                parent_nid = self.nodes[parent_nid].predecessor(self.tree_id)  # The parent of the parent
+                parent_nid = parent_node.predecessor(self.tree_id)  # The parent of the parent
+
         return False
 
     def level(self, node, filter_fun=lambda x: True):  # TODO demote level to private function!
@@ -185,7 +204,7 @@ class Tree:
         In other words, the root lives at level '0';
         ``filter_fun`` param is added to calculate level only if the given node is not in a fitered subtree.
         """
-        return sum(1 for _ in self.rsearch(node, filter_fun)) - 1  # TODO now using botom up search, must use top down!
+        return sum(1 for _ in self.busearch(node, filter_fun)) - 1
 
     def depth(self, node=None, filter_fun=lambda x: True):
         """
@@ -237,8 +256,7 @@ class Tree:
         if the given Node instance or node ID (nid) equals root node None is returned.
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         if nid == self.root:  # Root node for every level -> None
             return None
@@ -266,8 +284,7 @@ class Tree:
         Return the direct children (IDs or Node instance) list of the given Node instance or node ID (nid).
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         for child_nid in self.nodes[nid].successors(self.tree_id):  # TODO node or nid as prefered parameter?
             child_node = self.nodes[child_nid]
@@ -283,8 +300,7 @@ class Tree:
         If ``node`` is root or there are no siblings, an empty list is returned.
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
         if nid == self.root:
             return []
 
@@ -305,8 +321,7 @@ class Tree:
         If fiter_fun is set leaves in the filtered subtree are not considered.
         """
         if node is not None:  # Leaves for a specific subtree
-            nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-            self._check_nodeid_in_tree(nid)
+            nid = self._get_nid(node)
         else:
             nid = self.root  # All leaves
 
@@ -349,33 +364,39 @@ class Tree:
         res = []
 
         for leaf in self.leaves():
-            node_ids = [nid for nid in self.rsearch(leaf, filter_fun)]
+            node_ids = [nid for nid in self.busearch(leaf, filter_fun)]
             node_ids.reverse()
             res.append(tuple(node_ids))
 
         return res
 
-    def rsearch(self, node, filter_fun=lambda x: True):  # TODO expand_tree and __get? What is the difference?
+    def busearch(self, node, filter_fun=lambda x: True, lookup_node=False):
         """
         Traverse the tree branch bottom-up along the branch from nid to its ancestors (until root).
 
         :param node: node or node ID
         :param filter_fun: the function of one variable to act on the :class:`Node` object.
+        :param lookup_node: return Node instances or node IDs (nids)
         """
-        if node is None:  # TODO this is botom-up search need top down alternatvie!
+        # TODO expand_tree and __get? What is the difference?
+        if node is None:  # We are at root there is no way up
             return
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
 
-        current = nid
-        while current is not None:
-            if filter_fun(self.nodes[current]):
-                yield current  # TODO lookup_node !
-            # subtree() hasn't updated the predecessor
-            if self.root != current:
-                current = self.nodes[current].predecessor(self.tree_id)
+        if lookup_node:
+            lookup_node_fun = partial(lambda x: x)
+        else:
+            lookup_node_fun = partial(lambda x: x.nid)
+
+        current_node = self._get_node(node)
+        current_nid = current_node.nid
+        while current_nid is not None:
+            if filter_fun(current_node):
+                yield lookup_node_fun(current_node)
+            if self.root != current_nid:
+                current_nid = current_node.predecessor(self.tree_id)  # Parent of current node
+                current_node = self.nodes[current_nid]
             else:
-                current = None
+                current_nid = None
 
     def expand_tree(self, node=None, mode=DEPTH, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
                     lookup_nodes=False):
@@ -397,8 +418,7 @@ class Tree:
             nid = self.root
             curr_node = self.nodes[self.root]
         else:
-            nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-            self._check_nodeid_in_tree(nid)
+            nid = self._get_nid(node)
             curr_node = self.nodes[nid]  # TODO maybe there is better solution.
 
         if not filter_fun(curr_node):  # subtree filtered out
@@ -479,8 +499,10 @@ class Tree:
         if nid in self.nodes:
             raise DuplicatedNodeIdError(f'Cannot create node with ID {nid} !')
 
-        pid = self._get_nid(parent)  # Parent can be None! # TODO Should check if returned nid is in the tree!
-        # self._check_nodeid_in_tree(pid)
+        if parent is not None:  # Parent can be None!
+            pid = self._get_nid(parent)
+        else:
+            pid = None
 
         if pid is None:  # Adding root node
             if self.root is not None:
@@ -504,8 +526,7 @@ class Tree:
         :param attrs: attribute pairs recognized by Node object (Beware, attributes unconditionally updated!)
         :return: None
         """
-        nid_to_update = self._get_nid(node_to_update)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid_to_update)
+        nid_to_update = self._get_nid(node_to_update)
         cn = self.nodes[nid_to_update]
 
         new_identifier_val = attrs.pop('nid', None)
@@ -539,10 +560,8 @@ class Tree:
         """
         Move node ID or Node instance ``source`` (with its subree) from its parent to another parent ``destination``.
         """
-        source_nid = self._get_nid(source)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(source_nid)
-        destination_nid = self._get_nid(destination)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(destination_nid)
+        source_nid = self._get_nid(source)
+        destination_nid = self._get_nid(destination)
 
         # Source node can not be root, but destination can be!
         if self.is_ancestor(source, destination):  # Double check! TODO
@@ -563,8 +582,7 @@ class Tree:
 
         For example, if we have `a -> node -> c` and delete node ``node``, we are left with `a -> c`.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         if self.root == nid:
             raise LinkPastRootNodeError('Cannot link past the root node, delete it with remove_subtree()!')
@@ -580,7 +598,7 @@ class Tree:
         parent_node.update_successors(nid, mode=self.node_class.DELETE, tree_id=self.tree_id)
         del self.nodes[nid]
 
-    def subtree(self, nid, tree_id=None, deep=False):  # TODO implement deep copy!
+    def subtree(self, node, tree_id=None, deep=False):  # TODO implement deep copy!
         """
         Return a shallow or deep COPY of subtree with nid being the new root.
         If nid is None, return an empty tree.
@@ -588,9 +606,9 @@ class Tree:
         This line creates a deep copy of the entire tree.
         """
         st = self._clone(tree_id)
-        if nid is None:
+        if node is None:
             return st  # TODO deepcopy if deep true!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         st.root = nid
         for node_n_nid in self.expand_tree(nid):
@@ -613,8 +631,7 @@ class Tree:
         Remove a node ID or Node instance indicated by 'node' with all its successors.
         Return the number of removed nodes.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         if nid == self.root:
             # This tree will be empty, but the nodes may occur in other trees, so we meed to update each separately!
@@ -657,8 +674,7 @@ class Tree:
 
         :return: a :class:`Tree` object.
         """
-        nid = self._get_nid(node)  # TODO Should check if returned nid is in the tree!
-        self._check_nodeid_in_tree(nid)
+        nid = self._get_nid(node)
 
         st = self._clone(tree_id)  # TODO this why?
         if nid is None:
@@ -764,7 +780,7 @@ class Tree:
             self.nodes[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.tree_id)
 
     # PRINT RELATED FUNCTIONS ------------------------------------------------------------------------------------------
-    def __get(self, nid, level, filter_fun, key, reverse, line_type):
+    def __get(self, node, level, filter_fun, key, reverse, line_type):
         # Set sort key and reversing if needed
         key_fun = self._create_sort_fun(key, reverse)
 
@@ -773,10 +789,10 @@ class Tree:
         if line_elems is None:
             raise ValueError(f'Undefined line type ({line_type})! Must choose from {set(self._dt)}!')
 
-        if nid is None:
+        if node is None:
             nid = self.root
-
-        self._check_nodeid_in_tree(nid)
+        else:
+            nid = self._get_nid(node)
 
         init_node = self.nodes[nid]
         if filter_fun(init_node):

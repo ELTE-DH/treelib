@@ -411,7 +411,7 @@ class TreeCase(unittest.TestCase):
 
     def test_rsearch(self):
         for nid in ['hárry', 'jane', 'diane']:
-            self.assertEqual(nid in self.tree.rsearch('diane'), True)
+            self.assertEqual(nid in self.tree.busearch('diane'), True)
 
     def test_subtree(self):
         subtree_copy = Tree(self.tree.subtree('jane'), deep=True)
@@ -603,7 +603,7 @@ Hárry
         #       └── Diane
         #   └── Bill
         #       └── George
-        tree2 = self.tree.subtree(nid='jane', tree_id='tree 2')
+        tree2 = self.tree.subtree(node='jane', tree_id='tree 2')
         # tree 2
         # Jane
         #   └── Diane
