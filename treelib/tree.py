@@ -69,31 +69,6 @@ class Tree:
         }
 
     # HELPER FUNCTIONS -------------------------------------------------------------------------------------------------
-    def _clone(self, tree_id=None, with_tree=False, deep=False):
-        """
-        Clone current instance, with or without tree.
-
-        Method intended to be overloaded, to avoid rewriting whole ``subtree`` and ``pop_subtree`` methods when
-        inheriting from Tree.
-        >>> class TreeWithComposition(Tree):
-        >>>     def __init__(self, tree_description, tree=None, deep=False, tree_id=None):
-        >>>         self.tree_description = tree_description
-        >>>         super().__init__(tree=tree, deep=deep, tree_id=tree_id)
-        >>>
-        >>>     def _clone(self, tree_id=None, with_tree=False, deep=False):
-        >>>         return TreeWithComposition(
-        >>>             tree_id=tree_id,
-        >>>             deep=deep,
-        >>>             tree=self if with_tree else None,
-        >>>             tree_description=self.tree_description
-        >>>         )
-        >>> my_custom_tree = TreeWithComposition(tree_description='smart tree')
-        >>> subtree = my_custom_tree.subtree()
-        >>> subtree.tree_description
-        'smart tree'
-        """
-        return self.__class__(tree_id=tree_id, tree=self if with_tree else None, deep=deep)
-
     @staticmethod
     def _create_sort_fun(key, reverse):
         if key is None:
@@ -488,19 +463,19 @@ class Tree:
         else:
             raise ValueError(f'Traversal mode ({mode}) is not supported!')
 
-    # MODIFYING FUNCTIONS ----------------------------------------------------------------------------------------------
-    def create_node(self, tag=None, nid=None, data=None, parent=None):
+    # MODIFYING FUNCTIONS (Node) ---------------------------------------------------------------------------------------
+    def create_node(self, tag=None, nid=None, data=None, parent=None, update=True):
         """
-        Create a child node for given ``parent`` node. If node identifier (``nid``) is absent,
-         a UUID will be generated automatically.
+        Create a child node for given ``parent`` node and add it to the tree.
+         If node identifier (``nid``) is absent, a UUID will be generated automatically.
         """
         node = self.node_class(tag=tag, nid=nid, data=data)
-        self.add_node(node, parent)
+        self.add_node(node, parent, update)
         return node
 
-    def add_node(self, node, parent=None):  # TODO default factory ?
+    def add_node(self, node, parent=None, update=True):
         """
-        Add a new node object to the tree and make the parent as the root by default.
+        Add a previously created Node object to the tree and make the parent as the root by default.
 
         The 'node' parameter refers to an instance of Class::Node.
         """
@@ -508,11 +483,15 @@ class Tree:
             raise TypeError(f'First parameter must be object of {self.node_class} !')
 
         nid = node.nid
-        if nid in self.nodes:
+        if nid in self.nodes and not update:
             raise DuplicatedNodeIdError(f'Cannot create node with ID {nid} !')
+        else:
+            pass  # TODO update the required Node object
 
         if parent is not None:  # Parent can be None!
             pid = self._get_nid(parent)
+            if pid not in self.nodes:
+                raise NodeIDAbsentError(f'Parent node ({pid}) is not in the tree!')
         else:
             pid = None
 
@@ -521,8 +500,6 @@ class Tree:
                 raise MultipleRootError('A tree takes one root merely!')
             else:
                 self.root = nid
-        elif pid not in self.nodes:
-            raise NodeIDAbsentError(f'Parent node ({pid}) is not in the tree!')
         else:  # pid is not None and pid in self.nodes -> Updating non-root node's parent
             self.nodes[pid].update_successors(nid, self.node_class.ADD, tree_id=self.tree_id)
 
@@ -538,13 +515,14 @@ class Tree:
         :return: None
         """
         nid_to_update = self._get_nid(node_to_update)
-        cn = self.nodes[nid_to_update]
 
         new_identifier_val = attrs.pop('nid', None)
         if new_identifier_val is not None:
             # Updating node id meets following constraints:
             # * Update node ID (nid) property
             cn = self.nodes.pop(nid_to_update)
+            if cn.is_in_other_trees(self.tree_id):
+                raise NodePropertyError('Cannot update node ID as node is in multiple trees!')
             cn.nid = new_identifier_val
 
             # * Update tree registration of nodes
@@ -563,6 +541,8 @@ class Tree:
             # * Update tree root if necessary
             if self.root == nid_to_update:
                 self.root = new_identifier_val
+        else:
+            cn = self.nodes[nid_to_update]
 
         for attr, val in attrs.items():
             setattr(cn, attr, val)  # Potentially dangerous operation!
@@ -599,15 +579,43 @@ class Tree:
             raise LinkPastRootNodeError('Cannot link past the root node, delete it with remove_subtree()!')
         # Get the parent of the node we are linking past
         parent_node = self.nodes[self.nodes[nid].predecessor(self.tree_id)]
-        # Set the children of the node to the parent
-        for child in self.nodes[nid].successors(self.tree_id):
-            self.nodes[child].set_predecessor(parent_node.nid, self.tree_id)
-        # Move the children from the current node to the parent node
-        for curr_nid in self.nodes[nid].successors(self.tree_id):
-            parent_node.update_successors(curr_nid, tree_id=self.tree_id)
+        parent_node_nid = parent_node.nid
+
         # Delete the node from the parent and from the nodes registry
+        node_to_be_removed = self.nodes.pop(nid)
         parent_node.update_successors(nid, mode=self.node_class.DELETE, tree_id=self.tree_id)
-        del self.nodes[nid]
+        # Link parent with children
+        for child in node_to_be_removed.successors(self.tree_id):
+            # Set the children of the node to the parent
+            self.nodes[child].set_predecessor(parent_node_nid, self.tree_id)
+            # Move the children from the current node to the parent node
+            parent_node.update_successors(child, tree_id=self.tree_id)
+
+    # MODIFYING FUNCTIONS (subtree) ------------------------------------------------------------------------------------
+    def _clone(self, tree_id=None, with_tree=False, deep=False):
+        """
+        Clone current instance, with or without tree.
+
+        Method intended to be overloaded, to avoid rewriting whole ``subtree`` and ``pop_subtree`` methods when
+        inheriting from Tree.
+        >>> class TreeWithComposition(Tree):
+        >>>     def __init__(self, tree_description, tree=None, deep=False, tree_id=None):
+        >>>         self.tree_description = tree_description
+        >>>         super().__init__(tree=tree, deep=deep, tree_id=tree_id)
+        >>>
+        >>>     def _clone(self, tree_id=None, with_tree=False, deep=False):
+        >>>         return TreeWithComposition(
+        >>>             tree_id=tree_id,
+        >>>             deep=deep,
+        >>>             tree=self if with_tree else None,
+        >>>             tree_description=self.tree_description
+        >>>         )
+        >>> my_custom_tree = TreeWithComposition(tree_description='smart tree')
+        >>> subtree = my_custom_tree.subtree()
+        >>> subtree.tree_description
+        'smart tree'
+        """
+        return self.__class__(tree_id=tree_id, tree=self if with_tree else None, deep=deep)
 
     def subtree(self, node, tree_id=None, deep=False):  # TODO implement deep copy!
         """

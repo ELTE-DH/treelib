@@ -75,7 +75,7 @@ class Node:
         """
         return self._successors[tree_id]
 
-    def set_successors(self, value, tree_id=None):
+    def set_successors(self, value, tree_id):
         """
         Set the value of `_successors`.
         """
@@ -99,7 +99,7 @@ class Node:
         if nid in self.successors(tree_id):
             self.successors(tree_id).remove(nid)
         else:
-            ValueError(f'Node identifier ({nid}) was not present in fpointer!')
+            raise ValueError(f'Node identifier ({nid}) was not present in fpointer!')
 
     def _manipulator_replace(self, nid, tree_id, mode=None, replace=None):
         if replace is None:
@@ -141,7 +141,7 @@ class Node:
         if value is not None:
             self._identifier = value
         else:
-            ValueError('Node ID can not be None!')
+            raise ValueError('Node ID can not be None!')
 
     def clone_pointers(self, former_tree_id, new_tree_id):
         former_bpointer = self.predecessor(former_tree_id)
@@ -165,6 +165,12 @@ class Node:
         Return true if self has no parent, i.e. as root.
         """
         return self.predecessor(tree_id) is None
+
+    def is_in_other_trees(self, tree_id):
+        """
+        Return true if node has predecessor or successors in other trees
+        """
+        return len(self._predecessor.keys() - {tree_id}) > 0 or len(self._successors.keys() - {tree_id}) > 0
 
     def __repr__(self):
         name = self.__class__.__name__

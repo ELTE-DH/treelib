@@ -31,6 +31,8 @@ class NodeCase(unittest.TestCase):
         self.node1.nid = 'ID1'
         self.assertEqual(self.node1.nid, 'ID1')
         self.node1.nid = 'identifier 1'
+        with self.assertRaises(ValueError):
+            self.node1.nid = None
 
     def test_update_successors(self):
         self.node1.update_successors('identifier 2', tree_id='tree 1')
