@@ -10,13 +10,10 @@ When deep=True, a deepcopy operation is performed on feeding tree parameter and 
 is required to create the tree.
 """
 
-import json
 import uuid
 from copy import deepcopy
 from itertools import chain
 from functools import partial
-
-from io import StringIO
 
 from .exceptions import *
 from .node import Node
@@ -150,8 +147,10 @@ class Tree:
             return len(self.nodes)
         elif level == 0:
             return 1  # On the root level it is trivially only one node
+        elif level > 0:
+            return sum(1 for node in self.nodes.values() if self.depth(node.nid) == level)
         else:
-            return sum(1 for node in self.nodes.values() if self.level(node.nid) == level)
+            raise InvalidLevelNumber(f'Level cannot be negative ({level})!')
 
     def __getitem__(self, nid):
         """
@@ -179,8 +178,8 @@ class Tree:
         """
         Check if the ``ancestor`` the preceding nodes of ``child``.
 
-        :param ancestor: the node ID (nid) or Node instance
-        :param child: the node ID (nid) or Node instance
+        :param ancestor: The node ID (nid) or Node instance
+        :param child: The node ID (nid) or Node instance
         :return: True or False
         """
         ancestor_node = self._get_node(ancestor)
@@ -197,39 +196,25 @@ class Tree:
 
         return False
 
-    def level(self, node, filter_fun=lambda x: True):  # TODO demote level to private function!
-        """
-        Get the Node instance or node ID level in this tree.
-        The level is an integer starting with '0' at the root.
-        In other words, the root lives at level '0';
-        ``filter_fun`` param is added to calculate level only if the given node is not in a fitered subtree.
-        """
-        return sum(1 for _ in self.busearch(node, filter_fun)) - 1
-
     def depth(self, node=None, filter_fun=lambda x: True):
         """
-        Get the maximum level of this tree or the level of the given Node instance or node ID.
+        Get the level for the given Node instance or node ID in this tree.
+        If node is None get the maximum depth of this tree.
+        Level is an integer starting with 0 at the root. In other words, the root lives at level 0.
 
-        :param node: Node instance or identifier (nid)
-        :param filter_fun: A function to filter the subtrees when computing depth for leaves
+        :param node: The node ID (nid) or Node instance
+        :param filter_fun: A function to calculate level only if the given node is not in a fitered subtree.
         :return int:
         :throw NodeIDAbsentError:
         """
         if node is None:  # Get the maximum level of this tree
-            ret_level = max(self.level(leaf.nid, filter_fun=filter_fun) for leaf in self.leaves())
+            ret_level = max(sum(1 for _ in self.busearch(leaf.nid, filter_fun)) - 1 for leaf in self.leaves())
         else:  # Get level of the given node
-            ret_level = self.level(node, filter_fun=filter_fun)
+            ret_level = sum(1 for _ in self.busearch(node, filter_fun)) - 1
 
         return ret_level
 
     # Node returing READER FUNCTIONS -----------------------------------------------------------------------------------
-    # TODO from here may be implement deep copy of returned elems? Maybe Lookup too?
-    def all_nodes(self):
-        """
-        Returns all Node instances in an iterator.
-        """
-        return self.nodes.values()
-
     def get_node(self, nid):
         """
         Get the the Node instance with node ID ``nid``.
@@ -239,16 +224,24 @@ class Tree:
         """
         return self.nodes.get(nid)
 
-    def filter_nodes(self, func):
+    def get_nodes(self, filter_fun=None, lookup_nodes=True):
         """
-        Filters all Node instances by the given function.
+        Returns all Node instances in an iterator if filter function is not specified.
+        Else traverses the tree top down and filters subtrees by the given function.
 
-        :param func: All Node instances are passed and those will be included where the function returns True.
+        :param filter_fun: the ``filter_fun`` function is performed on Node object during traversing.
+        :param lookup_nodes: return Node instances (default) or node IDs (nids)
         :return: a filter iterator of the node
         """
-        return filter(func, self.nodes.values())
+        if filter_fun is None:
+            if lookup_nodes:
+                return self.nodes.values()
+            else:
+                return (curr_node.nid for curr_node in self.nodes.values())
+        else:
+            return self.expand_tree(self.root, filter_fun=filter_fun, lookup_nodes=lookup_nodes)
 
-    def parent(self, node, level=-1):
+    def parent(self, node, level=-1, lookup_nodes=True):
         """
         For a given Node instance or node ID (nid), get parent Node instance at a given level.
         If no level is provided or level equals -1, the parent Node instance is returned.
@@ -258,43 +251,50 @@ class Tree:
         """
         nid = self._get_nid(node)
 
+        if lookup_nodes:
+            lookup_nodes_fun = partial(lambda x: self.nodes[x])
+        else:
+            lookup_nodes_fun = partial(lambda x: x)
+
         if nid == self.root:  # Root node for every level -> None
             return None
         elif level == 0:  # Root level of non-root element
-            return self.nodes[self.root]  # Root Node instance
+            return lookup_nodes_fun(self.root)  # Root Node instance
 
         tree_id = self.tree_id
         ancestor = self.nodes[nid].predecessor(tree_id)  # Direct parent nid (None for root node)
         if level == -1:  # Direct parent is required
-            return self.nodes[ancestor]  # Parent Node instance (root node where parent is None is already handled)
-        elif level >= self.level(nid):
-            raise InvalidLevelNumber(f'The given node\'s level ({self.level(nid)}) must be greater than its '
-                                     f'parent\'s level (level {level})!')
+            return lookup_nodes_fun(ancestor)  # Parent Node instance (root node where parent is None already handled)
+        elif level >= self.depth(nid):  # Root node is already handled, so depth(nid) cannot be <= 0
+            raise InvalidLevelNumber(f'The given node\'s level ({self.depth(nid)}) must be greater than its '
+                                     f'parent\'s level ({level})!')
 
         # Ascend to the appropriate level
         while ancestor is not None:
-            ascendant_level = self.level(ancestor)
+            ascendant_level = self.depth(ancestor)
             if ascendant_level == level:
-                return self.nodes[ancestor]
+                return lookup_nodes_fun(ancestor)
             else:
                 ancestor = self.nodes[ancestor].predecessor(tree_id)  # Get the parent of the current node
 
-    def children(self, node, filter_fun=lambda x: True, lookup_nodes=False):
+    def children(self, node, filter_fun=lambda x: True, lookup_nodes=True):
         """
         Return the direct children (IDs or Node instance) list of the given Node instance or node ID (nid).
+        If there are no children or all the children are filtered out return empty iterator.
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)
-
-        for child_nid in self.nodes[nid].successors(self.tree_id):  # TODO node or nid as prefered parameter?
+        curr_node = self._get_node(node)
+        for child_nid in curr_node.successors(self.tree_id):
             child_node = self.nodes[child_nid]
             if filter_fun(child_node):
                 if lookup_nodes:
                     yield child_node
                 else:
                     yield child_nid
+            else:
+                return
 
-    def siblings(self, node, lookup_nodes=False):
+    def siblings(self, node, lookup_nodes=True):
         """
         Return the siblings of given ``node`` or node ID.
         If ``node`` is root or there are no siblings, an empty list is returned.
@@ -315,7 +315,7 @@ class Tree:
 
         return siblings
 
-    def leaves(self, node=None, filter_fun=lambda x: True):
+    def leaves(self, node=None, filter_fun=None, lookup_nodes=True):
         """
         Get leaves of the whole tree (if node is None) or a subtree (if node is a node ID or Node instance).
         If fiter_fun is set leaves in the filtered subtree are not considered.
@@ -325,17 +325,25 @@ class Tree:
         else:
             nid = self.root  # All leaves
 
-        subtree_node_it = (self.nodes[node] for node in self.expand_tree(nid))  # TODO lookup and filter in expand_tree!
+        if lookup_nodes:
+            lookup_nodes_fun = partial(lambda x: x)
+        else:
+            lookup_nodes_fun = partial(lambda x: x.nid)
 
-        leaves = [node for node in subtree_node_it if node.is_leaf(self.tree_id) and filter_fun(node)]
+        if filter_fun is None or nid != self.root:
+            subtree_node_it = self.nodes.values()  # No filter. from root node
+        else:
+            subtree_node_it = (node for node in self.expand_tree(nid, filter_fun=filter_fun, lookup_nodes=lookup_nodes))
+
+        leaves = [lookup_nodes_fun(node) for node in subtree_node_it if node.is_leaf(self.tree_id)]
 
         return leaves
 
-    def paths_to_leaves(self, filter_fun=lambda x: True):
+    def paths_to_leaves(self, node=None, filter_fun=lambda x: True):
         """
-        Use this function to get the identifiers allowing to go from the root node to each leaf.
+        Use this function to get the identifiers allowing to go from the given node to each leaf.
 
-        :return: a list of list of identifiers, root being not omitted.
+        :return: a list of list of identifiers, root is included into the path.
 
         For example:
 
@@ -363,35 +371,39 @@ class Tree:
         """
         res = []
 
-        for leaf in self.leaves():
-            node_ids = [nid for nid in self.busearch(leaf, filter_fun)]
+        for leaf in self.leaves(node):
+            node_ids = [nid for nid in self.busearch(leaf, filter_fun, lookup_nodes=False)]
             node_ids.reverse()
             res.append(tuple(node_ids))
 
         return res
 
-    def busearch(self, node, filter_fun=lambda x: True, lookup_node=False):
+    def busearch(self, node, filter_fun=lambda x: True, lookup_nodes=True):
         """
-        Traverse the tree branch bottom-up along the branch from nid to its ancestors (until root).
+        Traverse the tree branch bottom-up along the branch from a given Node instance or node ID (nid)
+         to its ancestors (until root).
 
         :param node: node or node ID
         :param filter_fun: the function of one variable to act on the :class:`Node` object.
-        :param lookup_node: return Node instances or node IDs (nids)
+        :param lookup_nodes: return Node instances or node IDs (nids)
         """
-        # TODO expand_tree and __get? What is the difference?
-        if node is None:  # We are at root there is no way up
-            return
-
-        if lookup_node:
-            lookup_node_fun = partial(lambda x: x)
+        if lookup_nodes:
+            lookup_nodes_fun = partial(lambda x: x)
         else:
-            lookup_node_fun = partial(lambda x: x.nid)
+            lookup_nodes_fun = partial(lambda x: x.nid)
 
-        current_node = self._get_node(node)
+        if node is None:  # We are at root there is no way up  # TODO Can the input parameter be None?
+            if self.root is not None:
+                current_node = self.nodes[self.root]
+            else:
+                return
+        else:
+            current_node = self._get_node(node)
+
         current_nid = current_node.nid
         while current_nid is not None:
-            if filter_fun(current_node):
-                yield lookup_node_fun(current_node)
+            if filter_fun(current_node):  # TODO filtering should be based on subtree!
+                yield lookup_nodes_fun(current_node)
             if self.root != current_nid:
                 current_nid = current_node.predecessor(self.tree_id)  # Parent of current node
                 current_node = self.nodes[current_nid]
@@ -414,29 +426,29 @@ class Tree:
         :return: Node IDs that satisfy the conditions in the defined order.
         :rtype: generator object
         """
+        # TODO expand_tree and _print_backend and to_dict? What is the difference?
         if node is None:
-            nid = self.root
-            curr_node = self.nodes[self.root]
+            if self.root is not None:
+                current_node = self.nodes[self.root]
+            else:
+                return
         else:
-            nid = self._get_nid(node)
-            curr_node = self.nodes[nid]  # TODO maybe there is better solution.
+            current_node = self._get_node(node)
 
-        if not filter_fun(curr_node):  # subtree filtered out
+        if not filter_fun(current_node):  # subtree filtered out
             return
 
         if lookup_nodes:
-            yield node
             lookup_nodes_fun = partial(lambda x: x)
         else:
-            yield nid  # yield current node ID
             lookup_nodes_fun = partial(lambda x: x.nid)
 
-        # filtered_successors = partial(lambda node: ,)
+        yield lookup_nodes_fun(current_node)  # yield current Node or node ID (nid)
 
-        queue = self.children(curr_node, filter_fun, lookup_nodes=True)
+        queue = self.children(current_node, filter_fun)
         if mode in {self.DEPTH, self.WIDTH}:
             # Set sort key fun
-            key_fun = self._create_sort_fun(key, reverse)
+            sort_fun = self._create_sort_fun(key, reverse)
 
             # Set tree traversal order
             if mode is self.DEPTH:
@@ -444,12 +456,12 @@ class Tree:
             else:
                 order_fun = partial(lambda x, y: chain(y, x))  # width-first
 
-            queue = list(key_fun(queue))  # Sort children
+            queue = list(sort_fun(queue))  # Sort children
             while len(queue) > 0:
                 cn = queue[0]
                 yield lookup_nodes_fun(cn)
 
-                expansion = list(key_fun(self.children(cn, filter_fun, lookup_nodes=True)))  # Sort children
+                expansion = list(sort_fun(self.children(cn, filter_fun)))  # Sort children
                 queue = list(order_fun(expansion, queue[1:]))  # Step
 
         elif mode == self.ZIGZAG:
@@ -459,9 +471,9 @@ class Tree:
             stack = stack_bw = queue
             forward = False
             while len(stack) > 0:
-                curr_node = lookup_nodes_fun(stack.pop(0))
-                yield curr_node
-                expansion = list(self.children(curr_node, filter_fun, lookup_nodes=True))
+                current_node = stack.pop(0)
+                yield lookup_nodes_fun(current_node)
+                expansion = list(self.children(current_node, filter_fun))
                 if forward:
                     expansion.reverse()
                     stack_bw = expansion + stack_bw
@@ -748,7 +760,7 @@ class Tree:
             else:
                 raise ValueError('Must define "nid" under a root which the new tree is merged!')
 
-        for child_nid in new_tree.children(new_tree.root):
+        for child_nid in new_tree.children(new_tree.root, lookup_nodes=False):
             self.paste(nid, new_tree.subtree(child_nid), deep)
 
     def paste(self, nid, new_tree, deep=False):
@@ -780,58 +792,27 @@ class Tree:
             self.nodes[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.tree_id)
 
     # PRINT RELATED FUNCTIONS ------------------------------------------------------------------------------------------
-    def __get(self, node, level, filter_fun, key, reverse, line_type):
-        # Set sort key and reversing if needed
-        key_fun = self._create_sort_fun(key, reverse)
+    def __str__(self):
+        return self.show()
 
-        # Set line types
-        line_elems = self._dt.get(line_type)
-        if line_elems is None:
-            raise ValueError(f'Undefined line type ({line_type})! Must choose from {set(self._dt)}!')
-
-        if node is None:
-            nid = self.root
-        else:
-            nid = self._get_nid(node)
-
-        init_node = self.nodes[nid]
-        if filter_fun(init_node):
-            return self.__get_recursive(init_node, level, filter_fun, key_fun, [], *line_elems)
-
-    def __get_recursive(self, node, level, filter_fun, sort_fun, is_last,
-                        dt_vertical_line, dt_line_box, dt_line_corner):
-        # Format current level
-        lines = []
-        if level > self.ROOT:
-            for curr_is_last in is_last[0:-1]:
-                if curr_is_last:
-                    line = ' ' * 4
-                else:
-                    line = dt_vertical_line + ' ' * 3
-                lines.append(line)
-
-            if is_last[-1]:
-                lines.append(dt_line_corner)
-            else:
-                lines.append(dt_line_box)
-
-        yield ''.join(lines), node
-
-        # Do deeper!
-        children = list(self.children(node, filter_fun, lookup_nodes=True))
-        idxlast = len(children) - 1
-
-        for idx, child in enumerate(sort_fun(children)):
-            is_last.append(idx == idxlast)
-            yield from self.__get_recursive(child, level + 1, filter_fun, sort_fun, is_last,
-                                            dt_vertical_line, dt_line_box, dt_line_corner)
-            is_last.pop()
-
-    def __print_backend(self, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
-                        line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end=''):
+    def show(self, node=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+             line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end='\n'):
         """
         Another implementation of printing tree using Stack Print tree structure in hierarchy style.
-        The ``key`` ``reverse`` is present to sort node at each level.
+        Return the tree structure as string in hierarchy style.
+
+        :param node: the reference Node instance or node ID (nid) to start expanding.
+        :param level: the node level in the tree (root as level 0).
+        :param filter_fun: the function of one variable to act on the :class:`Node` object.
+            When this parameter is specified, the traversing will not continue to follow
+            children of node whose condition does not pass the filter.
+        :param key: the ``key`` param for sorting :class:`Node` objects in the same level.
+        :param reverse: the ``reverse`` param for sorting :class:`Node` objects in the same level.
+        :param line_type: such as 'ascii' (default), 'ascii-ex', 'ascii-exr', 'ascii-em', 'ascii-emv', 'ascii-emh'
+            to the change graphical form.
+        :param get_label_fun: A function to define how to print labels
+        :param record_end: The ending character for each record (e.g. newline)
+        :return: None
 
         For example:
 
@@ -845,121 +826,134 @@ class Tree:
             |___ C02
             |___ C03
             |    |___ C31
+        """
+        return ''.join(self.show_iter(node, level, filter_fun, key, reverse, line_type, get_label_fun, record_end))
+
+    def show_iter(self, node=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+                  line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end=''):
+        """
+        Same as show(), but returns an iterator.
+        """
+        for pre, curr_node in self._print_backend(node, level, filter_fun, key, reverse, line_type):
+            label = get_label_fun(curr_node)
+            yield f'{pre}{label}{record_end}'
+
+    def _print_backend(self, node, level, filter_fun, key, reverse, line_type):
+        """
+        Set up depth-fist search
 
         A more elegant way to achieve this function using Stack structure, for constructing the Nodes Stack
          push and pop nodes with additional level info.
         """
-        # Iter with func
-        for pre, node in self.__get(nid, level, filter_fun, key, reverse, line_type):
-            label = get_label_fun(node)
-            yield f'{pre}{label}{record_end}'
+        if node is None:
+            if self.root is not None:
+                current_node = self.nodes[self.root]
+            else:
+                return
+        else:
+            current_node = self._get_node(node)
 
-    def __str__(self):
-        return self.show()
+        if not filter_fun(current_node):
+            return
 
-    def show(self, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
-             line_type='ascii-ex', get_label_fun=lambda node: node.tag):
-        """
-        Print the tree structure in hierarchy style.
+        # Set sort key and reversing if needed
+        sort_fun = self._create_sort_fun(key, reverse)
 
-        You have three ways to output your tree data, i.e., stdout with ``show()``,
-        plain text file with ``save2file()``, and json string with ``to_json()``. The
-        former two use the same backend to generate a string of tree structure in a
-        text graph.
+        # Set line types
+        line_elems = self._dt.get(line_type)
+        if line_elems is None:
+            raise ValueError(f'Undefined line type ({line_type})! Must choose from {set(self._dt)}!')
 
-        You can also specify the ``line_type`` parameter, such as 'ascii' (default), 'ascii-ex',
-         'ascii-exr', 'ascii-em', 'ascii-emv', 'ascii-emh') to the change graphical form.
+        return self._print_backend_recursive(current_node, level, filter_fun, sort_fun, [], *line_elems)
 
-        :param nid: the reference node to start expanding.
-        :param level: the node level in the tree (root as level 0).
-        :param filter_fun: the function of one variable to act on the :class:`Node` object.
-            When this parameter is specified, the traversing will not continue to following
-            children of node whose condition does not pass the filter.
-        :param key: the ``key`` param for sorting :class:`Node` objects in the same level.
-        :param reverse: the ``reverse`` param for sorting :class:`Node` objects in the same level.
-        :param line_type:
-        :param get_label_fun: A function to define how to print labels
-        :return: None
-        """
-        reader = self.__print_backend(nid, level, filter_fun, key, reverse, line_type, get_label_fun)
+    def _print_backend_recursive(self, node, level, filter_fun, sort_fun, is_last,
+                                 dt_vertical_line, dt_line_box, dt_line_corner):
+        # Format current level
+        lines = []
+        if level > self.ROOT:
+            for curr_is_last in is_last[:-1]:
+                if curr_is_last:
+                    line = ' ' * 4
+                else:
+                    line = dt_vertical_line + ' ' * 3
+                lines.append(line)
 
-        return '\n'.join(reader) + '\n'
+            if is_last[-1]:
+                lines.append(dt_line_corner)
+            else:
+                lines.append(dt_line_box)
 
-    def save2file(self, filename, nid=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
-                  line_type='ascii-ex', get_label_fun=lambda node: node.tag):
-        """
-        Save the tree into file for offline analysis.
-        """
-        with open(filename, 'w', encoding='UTF-8') as fh:
-            fh.writelines(f'{line}\n' for line in
-                          self.__print_backend(nid, level, filter_fun, key, reverse, line_type, get_label_fun))
+        yield ''.join(lines), node  # Yield the current level
 
-    def to_dict(self, nid=None, key=lambda x: x, sort=True, reverse=False, with_data=False):
+        # Go deeper!
+        children = list(self.children(node, filter_fun))
+        idxlast = len(children) - 1
+
+        for idx, child in enumerate(sort_fun(children)):
+            is_last.append(idx == idxlast)
+            yield from self._print_backend_recursive(child, level + 1, filter_fun, sort_fun, is_last,
+                                                     dt_vertical_line, dt_line_box, dt_line_corner)
+            is_last.pop()
+
+    def to_dict(self, node=None, filter_fun=lambda x: True, key=lambda x: x, reverse=False, with_data=False):
         """
         Transform the whole tree into a dict.
         """
+        if node is None:
+            if self.root is not None:
+                current_node = self.nodes[self.root]
+            else:
+                return
+        else:
+            current_node = self._get_node(node)
 
-        if nid is None:
-            nid = self.root
-        ntag = self.nodes[nid].tag
+        if not filter_fun(current_node):
+            return
+
+        # Set sort key and reversing if needed
+        sort_fun = self._create_sort_fun(key, reverse)
+
+        ntag = current_node.tag
         tree_dict = {ntag: {'children': []}}
         if with_data:
-            tree_dict[ntag]['data'] = self.nodes[nid].data
+            tree_dict[ntag]['data'] = current_node.data
 
-        queue = list(self.children(nid, lookup_nodes=True))
-        if sort:
-            queue.sort(key=key, reverse=reverse)
+        children = []
+        for elem in sort_fun(self.children(current_node, filter_fun)):
+            dict_form = self.to_dict(elem, filter_fun, key, reverse, with_data)  # TODO recursive!
+            children.append(dict_form)
 
-        for elem in queue:
-            # TODO recursive!
-            dict_form = self.to_dict(elem.nid, with_data=with_data, sort=sort, reverse=reverse)
-            tree_dict[ntag]['children'].append(dict_form)
+        tree_dict[ntag]['children'] = children
 
-        if len(tree_dict[ntag]['children']) == 0:
+        if len(children) == 0:  # Handle leaves
             if not with_data:
-                tree_dict = self.nodes[nid].tag
+                tree_dict = current_node.tag
             else:
-                tree_dict = {ntag: {'data': self.nodes[nid].data}}
+                tree_dict = {ntag: {'data': current_node.data}}
 
         return tree_dict
 
-    def to_json(self, with_data=False, sort=True, reverse=False):
+    def to_graphviz(self, node=None, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+                    shape='circle', graph='digraph'):
         """
-        To format the tree in JSON format.
+        Exports the tree in the dot format of the graphviz software as string generator.
         """
-        return json.dumps(self.to_dict(with_data=with_data, sort=sort, reverse=reverse))
 
-    def to_graphviz(self, filename=None, shape='circle', graph='digraph'):
-        """
-        Exports the tree in the dot format of the graphviz software.
-        """
-        nodes, connections = [], []
+        yield f'{graph} tree {{\n'
+
         if len(self.nodes) > 0:
 
-            for nid in self.expand_tree(mode=self.WIDTH):
-                state = f'"{nid}" [label="{self.nodes[nid].tag}", shape={shape}]'
-                nodes.append(state)
+            connections = []
+            for curr_node in self.expand_tree(node, self.WIDTH, filter_fun, key, reverse, lookup_nodes=True):
+                nid = curr_node.nid
+                state = f'"{nid}" [label="{curr_node.tag}", shape={shape}]'
+                yield f'\t{state}\n'  # Yield nodes
 
-                for cid in self.children(nid):
+                for cid in self.children(curr_node, lookup_nodes=False):  # Accumulate connections
                     connections.append(f'"{nid}" -> "{cid}"')
 
-        # Write nodes and connections to dot format
-        is_plain_file = filename is not None
-        if is_plain_file:
-            f = open(filename, 'w', encoding='UTF-8')
-        else:
-            f = StringIO()
+            if len(connections) > 0:  # Write connections after all nodes have been written
+                yield '\n'
+                yield from (f'\t{c}\n' for c in connections)
 
-        f.write(f'{graph} tree {{\n')
-        f.writelines(f'\t{n}\n' for n in nodes)
-
-        if len(connections) > 0:
-            f.write('\n')
-
-        f.writelines(f'\t{c}\n' for c in connections)
-        f.write('}')
-
-        if not is_plain_file:
-            print(f.getvalue())
-        else:
-            f.close()
+        yield '}\n'
