@@ -52,15 +52,8 @@ class Node:
         #: User payload associated with this node.
         self.data = data
 
-        # For retro-compatibility on bpointer/fpointer
-        self._initial_tree_id = None
-
     def __lt__(self, other):
         return self.tag < other.tag
-
-    def set_initial_tree_id(self, tree_id):  # TODO this must be somthing related with one node in multiple trees!
-        if self._initial_tree_id is None:
-            self._initial_tree_id = tree_id
 
     def predecessor(self, tree_id):
         """
@@ -161,22 +154,16 @@ class Node:
         self._predecessor.pop(tree_id, None)
         self._successors.pop(tree_id, None)
 
-    def is_leaf(self, tree_id=None):
+    def is_leaf(self, tree_id):
         """
         Return true if current node has no children.
         """
-        if tree_id is None:
-            tree_id = self._initial_tree_id
-
         return len(self.successors(tree_id)) == 0
 
-    def is_root(self, tree_id=None):
+    def is_root(self, tree_id):
         """
         Return true if self has no parent, i.e. as root.
         """
-        if tree_id is None:
-            tree_id = self._initial_tree_id
-
         return self.predecessor(tree_id) is None
 
     def __repr__(self):

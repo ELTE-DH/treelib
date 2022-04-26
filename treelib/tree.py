@@ -527,7 +527,6 @@ class Tree:
             self.nodes[pid].update_successors(nid, self.node_class.ADD, tree_id=self.tree_id)
 
         node.set_predecessor(pid, self.tree_id)
-        node.set_initial_tree_id(self.tree_id)
         self.nodes[nid] = node
 
     def update_node(self, node_to_update, **attrs):
@@ -709,7 +708,6 @@ class Tree:
             # Clone pointers to the new tree
             curr_node.clone_pointers(self.tree_id, st.tree_id)
             # Because we reuse the Node instance, we must clean all reference to the old tree!
-            curr_node.set_initial_tree_id(st.tree_id)  # TODO hack!
             curr_node.delete_pointers(self.tree_id)
             # Add the prepared node to the new tree
             st.nodes[curr_nid] = curr_node

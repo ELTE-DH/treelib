@@ -64,8 +64,8 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(isinstance(self.copytree, Tree), True)
 
     def test_is_root(self):
-        self.assertTrue(self.tree.nodes['hárry'].is_root())
-        self.assertFalse(self.tree.nodes['jane'].is_root())
+        self.assertTrue(self.tree.nodes['hárry'].is_root('tree 1'))
+        self.assertFalse(self.tree.nodes['jane'].is_root('tree 1'))
 
     def test_tree_wise_is_root(self):
         subtree = self.tree.subtree('jane', tree_id='subtree 2')
@@ -181,13 +181,12 @@ class TreeCase(unittest.TestCase):
         self.tree.remove_subtree('jill')
 
     def test_leaves(self):
-        # Retro-compatibility
         leaves = self.tree.leaves()
         for nid in self.tree.expand_tree():
-            self.assertEqual((self.tree[nid].is_leaf()) == (self.tree[nid] in leaves), True)
+            self.assertEqual((self.tree[nid].is_leaf('tree 1')) == (self.tree[nid] in leaves), True)
         leaves = self.tree.leaves(node='jane')
         for nid in self.tree.expand_tree(node='jane'):
-            self.assertEqual(self.tree[nid].is_leaf() == (self.tree[nid] in leaves), True)
+            self.assertEqual(self.tree[nid].is_leaf('tree 1') == (self.tree[nid] in leaves), True)
 
     def test_tree_wise_leaves(self):
         leaves = self.tree.leaves()
