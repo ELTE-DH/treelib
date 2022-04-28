@@ -25,7 +25,7 @@ class Tree:
     """
 
     #: ROOT, DEPTH, WIDTH, ZIGZAG constants :
-    (ROOT, DEPTH, WIDTH, ZIGZAG) = list(range(4))
+    (DEPTH, WIDTH, ZIGZAG) = list(range(3))
     node_class = Node
 
     def __init__(self, tree=None, deep: bool = False, node_class=None, tree_id=None):
@@ -505,7 +505,7 @@ class Tree:
             else:
                 self.root = nid
         else:  # pid is not None and pid in self.nodes -> Updating non-root node's parent
-            self.nodes[pid].update_successors(nid, self.node_class.ADD, tree_id=self.tree_id)
+            self.nodes[pid].add_successor(nid, self.tree_id)
 
         node.set_predecessor(pid, self.tree_id)
         self.nodes[nid] = node
@@ -535,8 +535,7 @@ class Tree:
             # * Update parent's followers
             parent_nid = cn.predecessor(self.tree_id)
             if parent_nid is not None:
-                self.nodes[parent_nid].update_successors(nid_to_update, self.node_class.REPLACE, new_identifier_val,
-                                                         self.tree_id)
+                self.nodes[parent_nid].replace_successor(nid_to_update, self.tree_id, new_identifier_val)
 
             # * Update children's parents
             for fp in cn.successors(self.tree_id):
@@ -566,8 +565,8 @@ class Tree:
         # Update old and new parents
         # Parent can not be None as it woluld mean source node is the root which case is already handled by LoopError
         parent = self.nodes[source].predecessor(self.tree_id)
-        self.nodes[parent].update_successors(source, self.node_class.DELETE, tree_id=self.tree_id)
-        self.nodes[destination].update_successors(source, self.node_class.ADD, tree_id=self.tree_id)
+        self.nodes[parent].remove_successor(source, self.tree_id)
+        self.nodes[destination].add_successor(source, self.tree_id)
         # Add new parent for source
         self.nodes[source].set_predecessor(destination, self.tree_id)
 
@@ -587,13 +586,13 @@ class Tree:
 
         # Delete the node from the parent and from the nodes registry
         node_to_be_removed = self.nodes.pop(nid)
-        parent_node.update_successors(nid, self.node_class.DELETE, tree_id=self.tree_id)
+        parent_node.remove_successor(nid, self.tree_id)
         # Link parent with children
         for child in node_to_be_removed.successors(self.tree_id):
             # Set the children of the node to the parent
             self.nodes[child].set_predecessor(parent_node_nid, self.tree_id)
             # Move the children from the current node to the parent node
-            parent_node.update_successors(child, tree_id=self.tree_id)
+            parent_node.add_successor(child, self.tree_id)
 
     # MODIFYING FUNCTIONS (subtree) ------------------------------------------------------------------------------------
     def _clone(self, tree_id=None, with_tree=False, deep=False):
@@ -663,7 +662,7 @@ class Tree:
             # Update parent info (if nid is not root)
             # In the original tree, the removed nid will be unreferenced from its parents children
             parent = self.nodes[nid].predecessor(self.tree_id)
-            self.nodes[parent].update_successors(nid, self.node_class.DELETE, tree_id=self.tree_id)
+            self.nodes[parent].remove_successor(nid, self.tree_id)
 
         self.nodes[nid].set_predecessor(None, self.tree_id)
 
@@ -676,7 +675,7 @@ class Tree:
             curr_node.set_predecessor(None, self.tree_id)
             # Remove children (from this tree)
             for cid in curr_node.successors(self.tree_id):
-                curr_node.update_successors(cid, self.node_class.DELETE, tree_id=self.tree_id)
+                curr_node.remove_successor(cid, self.tree_id)
 
         return len(nids_removed)
 
@@ -711,7 +710,7 @@ class Tree:
             # Update parent info (if nid is not root)
             # In the original tree, the removed nid will be unreferenced from its parents children
             parent = self.nodes[nid].predecessor(self.tree_id)
-            self.nodes[parent].update_successors(nid, self.node_class.DELETE, tree_id=self.tree_id)
+            self.nodes[parent].remove_successor(nid, self.tree_id)
 
         nids_removed = list(self.expand_tree(nid))
         for curr_nid in nids_removed:
@@ -799,13 +798,13 @@ class Tree:
 
         self.nodes[new_tree.root].set_predecessor(nid, self.tree_id)
         if nid is not None:
-            self.nodes[nid].update_successors(new_tree.root, self.node_class.ADD, tree_id=self.tree_id)
+            self.nodes[nid].add_successor(new_tree.root, self.tree_id)
 
     # PRINT RELATED FUNCTIONS ------------------------------------------------------------------------------------------
     def __str__(self):
         return self.show()
 
-    def show(self, node=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+    def show(self, node=None, level=0, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
              line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end='\n'):
         """
         Another implementation of printing tree using Stack Print tree structure in hierarchy style.
@@ -839,7 +838,7 @@ class Tree:
         """
         return ''.join(self.show_iter(node, level, filter_fun, key, reverse, line_type, get_label_fun, record_end))
 
-    def show_iter(self, node=None, level=ROOT, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
+    def show_iter(self, node=None, level=0, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
                   line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end=''):
         """
         Same as show(), but returns an iterator.
@@ -883,7 +882,7 @@ class Tree:
                                  dt_vertical_line, dt_line_box, dt_line_corner):
         # Format current level
         lines = []
-        if level > self.ROOT:
+        if level > 0:
             for curr_is_last in is_last[:-1]:
                 if curr_is_last:
                     line = ' ' * 4

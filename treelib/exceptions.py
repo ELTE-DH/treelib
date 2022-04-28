@@ -12,13 +12,6 @@ class NodeIDAbsentError(NodePropertyError):
     pass
 
 
-class NodePropertyAbsentError(NodePropertyError):
-    """
-    Exception throwed if a node's data property is not specified
-    """
-    pass
-
-
 class MultipleRootError(Exception):
     """
     Exception throwed if more than one root exists in a tree.
@@ -49,5 +42,3 @@ class LoopError(Exception):
     Exception thrown if trying to move node B to node A's position while A is B's ancestor.
     """
     pass
-
-

@@ -13,17 +13,12 @@ import uuid
 from collections import defaultdict
 from typing import Any, Hashable
 
-from .exceptions import NodePropertyError
-
 
 class Node:
     """
     Nodes are elementary objects that are stored in the `_nodes` dictionary of a Tree.
     Use `data` attribute to store node-specific data.
     """
-
-    #: Mode constants for routine `update_fpointer()`.
-    (ADD, DELETE, REPLACE) = list(range(3))
 
     def __init__(self, tag: Hashable = None, nid: Hashable = None, data: Any = None):
         """
@@ -92,38 +87,15 @@ class Node:
             raise NotImplementedError(f'Unsupported value type {t}!')
         self._successors[tree_id] = f_setter(value)
 
-    def _manipulator_append(self, nid, tree_id, _=None, __=None):
+    def add_successor(self, nid, tree_id):
         self.successors(tree_id).append(nid)
 
-    def _manipulator_delete(self, nid, tree_id, _=None, __=None):
-        if nid in self.successors(tree_id):
-            self.successors(tree_id).remove(nid)
-        else:
-            raise ValueError(f'Node identifier ({nid}) was not present in fpointer!')
+    def remove_successor(self, nid, tree_id):
+        self.successors(tree_id).remove(nid)  # Raises ValueError if nid is not in the list of successors
 
-    def _manipulator_replace(self, nid, tree_id, mode=None, replace=None):
-        if replace is None:
-            raise NodePropertyError(f'Argument "repalce" should be provided when mode is {mode}!')
+    def replace_successor(self, nid, tree_id, replace):
         ind = self.successors(tree_id).index(nid)
         self.successors(tree_id)[ind] = replace
-
-    def update_successors(self, nid, mode=ADD, replace=None, tree_id=None):
-        """
-        Update the children list with different modes: addition (Node.ADD or Node.INSERT) and deletion (Node.DELETE).
-        """
-        if nid is None:
-            return
-
-        manipulator_lookup = {
-            self.ADD: self._manipulator_append,
-            self.DELETE: self._manipulator_delete,
-            self.REPLACE: self._manipulator_replace
-        }
-
-        f_name = manipulator_lookup.get(mode)
-        if f_name is None:
-            raise NotImplementedError(f'Unsupported node updating mode {mode}!')
-        f_name(nid, tree_id, mode, replace)
 
     @property
     def nid(self):

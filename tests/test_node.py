@@ -35,14 +35,12 @@ class NodeCase(unittest.TestCase):
             self.node1.nid = None
 
     def test_update_successors(self):
-        self.node1.update_successors('identifier 2', tree_id='tree 1')
+        self.node1.add_successor('identifier 2', 'tree 1')
         self.assertEqual(self.node1.successors('tree 1'), ['identifier 2'])
         self.assertEqual(self.node1._successors['tree 1'], ['identifier 2'])
-        self.node1.set_successors([], tree_id='tree 1')
+        self.node1.set_successors([], 'tree 1')
         self.assertEqual(self.node1._successors['tree 1'], [])
-        self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, tree_id='tree 1')
-        self.assertIsNone(self.node1.update_successors(None, tree_id='tree 1'))
-        self.assertRaises(NotImplementedError, self.node1.update_successors, 'identifier 2', 1000)
+        self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, 'tree 1')
 
     def test_set_predecessor(self):
         self.node2.set_predecessor('identifier 1', 'tree 1')
@@ -52,13 +50,13 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2.predecessor('tree 1'), None)
 
     def test_set_is_leaf(self):
-        self.node1.update_successors('identifier 2')
+        self.node1.add_successor('identifier 2', 'tree 2')
         self.node2.set_predecessor('identifier 1', 'tree 1')
-        self.assertEqual(self.node1.is_leaf(None), False)
+        self.assertEqual(self.node1.is_leaf('tree 2'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
 
     def test_tree_wise_is_leaf(self):
-        self.node1.update_successors('identifier 2', tree_id='tree 1')
+        self.node1.add_successor('identifier 2', 'tree 1')
         self.node2.set_predecessor('identifier 1', 'tree 1')
         self.assertEqual(self.node1.is_leaf('tree 1'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
