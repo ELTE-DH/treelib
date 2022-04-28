@@ -82,21 +82,21 @@ class Tree:
 
     def _get_nid(self, node):
         """
-        Get the node ID (nid) for the given Node instance or node ID (the inverse of ``get_node``, used internally)
+        Get the node ID (nid) for the given Node instance or node ID (the inverse of ``get_node``, used internally).
         """
         if isinstance(node, self.node_class):
             nid = node.nid
         else:
             nid = node
 
-        if nid not in self.nodes:
+        if nid not in self.nodes:  # TODO extra check on node instance equality?
             raise NodeIDAbsentError(f'Node ({nid}) is not in the tree!')
 
         return nid
 
     def _get_node(self, node):
         """
-        Get the Node instance for the given Node instance or node ID (similar to ``get_node``, used internally)
+        Get the Node instance for the given Node instance or node ID (similar to ``get_node``, used internally).
         """
         if isinstance(node, self.node_class):
             curr_node = self.nodes.get(node.nid)  # Node is given as parameter and is not found in the tree
@@ -110,7 +110,7 @@ class Tree:
         return curr_node
 
     # SIMPLE READER FUNCTIONS ------------------------------------------------------------------------------------------
-    def size(self, level=None):
+    def size(self, level: int = None):
         """
         Get the number of nodes in the whole tree if ``level`` is not given.
         Otherwise, the total number of nodes at specific level is returned.
@@ -119,7 +119,7 @@ class Tree:
         :param level: The level number in the tree. It must be greater or equal to 0, None to return len(tree).
         """
         if level is None:
-            return len(self.nodes)
+            return len(self.nodes)  # Same as __len__()
         elif level == 0:
             return 1  # On the root level it is trivially only one node
         elif level > 0:
@@ -129,7 +129,7 @@ class Tree:
 
     def __getitem__(self, nid):
         """
-        Return a Node instance for a node ID (nid) if the tree contains it
+        Return a Node instance for a node ID (nid) if the tree contains it else raises NodeIDAbsentError.
         """
         try:
             return self.nodes[nid]
@@ -138,7 +138,7 @@ class Tree:
 
     def __len__(self):
         """
-        Return the number of nodes (node IDs (nid)) in the tree
+        Return the number of nodes (node IDs (nid)) in the tree.
         """
         return len(self.nodes)
 
@@ -149,45 +149,47 @@ class Tree:
         else:
             return node in self.nodes  # Check if node ID (nid) is in the tree
 
-    def is_ancestor(self, ancestor, child):
+    def is_ancestor(self, ancestor, child) -> bool:
         """
         Check if the ``ancestor`` the preceding nodes of ``child``.
 
-        :param ancestor: The node ID (nid) or Node instance
-        :param child: The node ID (nid) or Node instance
+        :param ancestor: The Node instance or node ID (nid).
+        :param child: The Node instance or node ID (nid).
         :return: True or False
         """
-        ancestor_node = self._get_node(ancestor)
-        ancestor_nid = ancestor_node.nid
-        child_node = self._get_node(child)
+        if self.root is not None:
+            ancestor_node = self._get_node(ancestor)
+            ancestor_nid = ancestor_node.nid
+            child_node = self._get_node(child)
 
-        parent_nid = child_node.predecessor(self.tree_id)
-        while parent_nid is not None:  # If parent is None we are at the root node
-            parent_node = self.nodes[parent_nid]
-            if parent_nid == ancestor_nid and parent_node == ancestor_node:
-                return True
-            else:
-                parent_nid = parent_node.predecessor(self.tree_id)  # The parent of the parent
+            parent_nid = child_node.predecessor(self.tree_id)
+            while parent_nid is not None:  # If parent is None we are at the root node
+                parent_node = self.nodes[parent_nid]
+                if parent_nid == ancestor_nid and parent_node == ancestor_node:
+                    return True
+                else:
+                    parent_nid = parent_node.predecessor(self.tree_id)  # The parent of the parent
 
         return False
 
-    def depth(self, node=None, filter_fun=lambda x: True):
+    def depth(self, node=None, filter_fun=lambda x: True) -> int:
         """
-        Get the level for the given Node instance or node ID in this tree.
+        Get the level for the given Node instance or node ID (nid) in the tree.
         If node is None get the maximum depth of this tree.
-        Level is an integer starting with 0 at the root. In other words, the root lives at level 0.
 
-        :param node: The node ID (nid) or Node instance
-        :param filter_fun: A function to calculate level only if the given node is not in a fitered subtree.
-        :return int:
+        :param node: The Node instance or node ID (nid).
+        :param filter_fun: a function with one parameter executed on a :class:`Node` object.
+            When this parameter is specified, the traversing will will NOT visit those nodes
+            (and their children) which does not pass filtering (evaluates false).
+        :return int: An integer (level) starting with 0 at the root. In other words, the root lives at level 0.
         :throw NodeIDAbsentError:
         """
         if node is None:  # Get the maximum level of this tree
-            ret_level = max(sum(1 for _ in self.busearch(leaf.nid, filter_fun)) - 1 for leaf in self.leaves())
+            level = max((sum(1 for _ in self.busearch(leaf.nid, filter_fun)) - 1 for leaf in self.leaves()), default=0)
         else:  # Get level of the given node
-            ret_level = sum(1 for _ in self.busearch(node, filter_fun)) - 1
+            level = sum(1 for _ in self.busearch(node, filter_fun)) - 1
 
-        return ret_level
+        return level
 
     # Node returing READER FUNCTIONS -----------------------------------------------------------------------------------
     def get_node(self, nid):
@@ -199,14 +201,16 @@ class Tree:
         """
         return self.nodes.get(nid)
 
-    def get_nodes(self, filter_fun=None, lookup_nodes=True):
+    def get_nodes(self, filter_fun=None, lookup_nodes: bool = True):
         """
-        Returns all Node instances in an iterator if filter function is not specified.
+        Returns all Node instances in an iterator if filter function is not specified or None.
         Else traverses the tree top down and filters subtrees by the given function.
 
-        :param filter_fun: the ``filter_fun`` function is performed on Node object during traversing.
-        :param lookup_nodes: return Node instances (default) or node IDs (nids)
-        :return: a filter iterator of the node
+        :param filter_fun: a function with one parameter executed on a :class:`Node` object.
+            When this parameter is specified, the traversing will will NOT visit those nodes
+            (and their children) which does not pass filtering (evaluates false).
+        :param lookup_nodes: return Node instances (default) or node IDs (nids).
+        :return: return an iterator of Node instances (default) or node IDs (nids).
         """
         if filter_fun is None:
             if lookup_nodes:
@@ -216,28 +220,29 @@ class Tree:
         else:
             return self.expand_tree(self.root, filter_fun=filter_fun, lookup_nodes=lookup_nodes)
 
-    def parent(self, node, level=-1, lookup_nodes=True):
+    def parent(self, node, level: int = -1, lookup_nodes: bool = True):
         """
         For a given Node instance or node ID (nid), get parent Node instance at a given level.
-        If no level is provided or level equals -1, the parent Node instance is returned.
-        If level equals 0 the root Node instance is returned.
-        if the given Node instance or node ID (nid) equals root node None is returned.
-        NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
+        Cornercases are evaluated in this order:
+        - If level equals 0 the root Node instance is returned.
+        - If the given Node instance or node ID (nid) equals root node None is returned.
+        - If no level is provided or level equals -1, the parent Node instance is returned.
+        NodeIDAbsentError exception is raised if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)
+        nid = self._get_nid(node)  # TODO more rigorous check is needed!
 
         if lookup_nodes:
             lookup_nodes_fun = partial(lambda x: self.nodes[x])
         else:
             lookup_nodes_fun = partial(lambda x: x)
 
-        if nid == self.root:  # Root node for every level -> None
+        if level == 0:  # Root level of any element -> Root Node instance or node ID (nid)
+            return lookup_nodes_fun(self.root)
+        elif nid == self.root:  # Root node for every non-root level -> None
             return None
-        elif level == 0:  # Root level of non-root element
-            return lookup_nodes_fun(self.root)  # Root Node instance
 
         tree_id = self.tree_id
-        ancestor = self.nodes[nid].predecessor(tree_id)  # Direct parent nid (None for root node)
+        ancestor = self.nodes[nid].predecessor(tree_id)  # Direct parent nid (None for root node is alread handled)
         if level == -1:  # Direct parent is required
             return lookup_nodes_fun(ancestor)  # Parent Node instance (root node where parent is None already handled)
         elif level >= self.depth(nid):  # Root node is already handled, so depth(nid) cannot be <= 0
@@ -252,9 +257,9 @@ class Tree:
             else:
                 ancestor = self.nodes[ancestor].predecessor(tree_id)  # Get the parent of the current node
 
-    def children(self, node, filter_fun=lambda x: True, lookup_nodes=True):
+    def children(self, node, filter_fun=lambda x: True, lookup_nodes: bool = True):
         """
-        Return the direct children (IDs or Node instance) list of the given Node instance or node ID (nid).
+        Return the iterator of direct children (IDs or Node instance) of the given Node instance or node ID (nid).
         If there are no children or all the children are filtered out return empty iterator.
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
@@ -269,34 +274,40 @@ class Tree:
             else:
                 return
 
-    def siblings(self, node, lookup_nodes=True):
+    def siblings(self, node, filter_fun=lambda x: True, lookup_nodes: bool = True):
         """
-        Return the siblings of given ``node`` or node ID.
-        If ``node`` is root or there are no siblings, an empty list is returned.
+        Return the iterator of siblings of the given Node instance or node ID (nid) ``node``.
+        If ``node`` is root, there are no siblings or all of them are filtered, empty iterator is returned.
         NodeIDAbsentError exception is thrown if the ``node`` does not exist in the tree.
         """
-        nid = self._get_nid(node)
+        nid = self._get_nid(node)  # TODO more rigourous check is needed!
         if nid == self.root:
-            return []
+            return
 
         direct_parent_id = self.nodes[nid].predecessor(self.tree_id)
         parents_children_ids = self.nodes[direct_parent_id].successors(self.tree_id)
-        siblings_it = (i for i in parents_children_ids if i != nid)
-
-        if lookup_nodes:
-            siblings = [self.nodes[i] for i in siblings_it]
+        if filter_fun is None and not lookup_nodes:
+            siblings_it = (i for i in parents_children_ids if i != nid)  # All sibling IDs without hassle
         else:
-            siblings = list(siblings_it)
+            sibling_nodes_it = (self.nodes[i] for i in parents_children_ids if i != nid)  # Must lookup nodes either way
+            if not lookup_nodes:
+                siblings_it = (i.nid for i in sibling_nodes_it if filter_fun(i))
+            else:
+                siblings_it = (i for i in sibling_nodes_it if filter_fun(i))
 
-        return siblings
+        yield from siblings_it
 
-    def leaves(self, node=None, filter_fun=None, lookup_nodes=True):
+    def leaves(self, node=None, filter_fun=None, lookup_nodes: bool = True):
         """
-        Get leaves of the whole tree (if node is None) or a subtree (if node is a node ID or Node instance).
+        Get the iterator of leaves of the whole tree (if node is None)
+         or a subtree (if node is a Node instance or node ID (nid)).
         If fiter_fun is set leaves in the filtered subtree are not considered.
+        If tree is empty (i.e. it has no root node) empty iterator is returned.
         """
         if node is not None:  # Leaves for a specific subtree
-            nid = self._get_nid(node)
+            nid = self._get_nid(node)  # TODO a more rigourous check is needed!
+        elif self.root is None:
+            return
         else:
             nid = self.root  # All leaves
 
@@ -310,15 +321,13 @@ class Tree:
         else:
             subtree_node_it = (node for node in self.expand_tree(nid, filter_fun=filter_fun, lookup_nodes=lookup_nodes))
 
-        leaves = [lookup_nodes_fun(node) for node in subtree_node_it if node.is_leaf(self.tree_id)]
-
-        return leaves
+        yield from (lookup_nodes_fun(node) for node in subtree_node_it if node.is_leaf(self.tree_id))
 
     def paths_to_leaves(self, node=None, filter_fun=lambda x: True):
         """
-        Use this function to get the identifiers allowing to go from the given node to each leaf.
+        Get the identifiers allowing to go from the given node to each leaf.
 
-        :return: a list of list of identifiers, root is included into the path.
+        :return: an iterator of tuples of identifiers, root is included into the path.
 
         For example:
 
@@ -344,37 +353,31 @@ class Tree:
              ]
 
         """
-        res = []
 
         for leaf in self.leaves(node):
             node_ids = [nid for nid in self.busearch(leaf, filter_fun, lookup_nodes=False)]
             node_ids.reverse()
-            res.append(tuple(node_ids))
+            yield tuple(node_ids)
 
-        return res
+        return
 
-    def busearch(self, node, filter_fun=lambda x: True, lookup_nodes=True):
+    def busearch(self, node, filter_fun=lambda x: True, lookup_nodes: bool = True):
         """
         Traverse the tree branch bottom-up along the branch from a given Node instance or node ID (nid)
-         to its ancestors (until root).
+         to its ancestors until root.
 
-        :param node: node or node ID
-        :param filter_fun: the function of one variable to act on the :class:`Node` object.
-        :param lookup_nodes: return Node instances or node IDs (nids)
+        :param node: The Node instance or node ID (nid).
+        :param filter_fun: a function with one parameter executed on a :class:`Node` object.
+            When this parameter is specified, the traversing will will NOT visit those nodes
+            (and their children) which does not pass filtering (evaluates false).
+        :param lookup_nodes: return Node instances (default) or node IDs (nids).
         """
         if lookup_nodes:
             lookup_nodes_fun = partial(lambda x: x)
         else:
             lookup_nodes_fun = partial(lambda x: x.nid)
 
-        if node is None:  # We are at root there is no way up  # TODO Can the input parameter be None?
-            if self.root is not None:
-                current_node = self.nodes[self.root]
-            else:
-                return
-        else:
-            current_node = self._get_node(node)
-
+        current_node = self._get_node(node)  # In an empty tree the input node will be absent
         current_nid = current_node.nid
         while current_nid is not None:
             if filter_fun(current_node):  # TODO filtering should be based on subtree!
@@ -390,27 +393,28 @@ class Tree:
         """
         Python generator to traverse the tree (or a subtree) with optional node filtering and sorting.
 
-        :param node: Node or node ID (nid) from which tree traversal will start. If None tree root will be used.
-        :param mode: Traversal mode, may be either ``DEPTH``, ``WIDTH`` or ``ZIGZAG``
-        :param filter_fun: the ``filter_fun`` function is performed on Node object during traversing.
-            The traversing will NOT visit those nodes (and their subrtree) which does not pass filtering.
+        :param node: The Node instance or node ID (nid) from which tree traversal will start.
+             If None tree root will be used.
+        :param mode: Traversal mode, may be either ``DEPTH``, ``WIDTH`` or ``ZIGZAG``.
+        :param filter_fun: a function with one parameter executed on a :class:`Node` object.
+            When this parameter is specified, the traversing will will NOT visit those nodes
+            (and their children) which does not pass filtering (evaluates false).
         :param key: the ``key`` and ``reverse`` are present to sort nodes at each level.
             If ``key`` is None the function returns nodes in original insertion order.
         :param reverse: if True reverse ordering.
-        :param lookup_nodes: return Nodes or just the node IDs (nid)
+        :param lookup_nodes: return Node instances (default) or node IDs (nids).
         :return: Node IDs that satisfy the conditions in the defined order.
-        :rtype: generator object
+        :rtype: generator object.
         """
         # TODO expand_tree and _print_backend and to_dict? What is the difference?
-        if node is None:
-            if self.root is not None:
-                current_node = self.nodes[self.root]
-            else:
-                return
-        else:
+        if node is not None:
             current_node = self._get_node(node)
+        elif self.root is None:
+            return
+        else:
+            current_node = self.nodes[self.root]
 
-        if not filter_fun(current_node):  # subtree filtered out
+        if not filter_fun(current_node):  # subtree filtered out  # TODO should not filter the parameter node!
             return
 
         if lookup_nodes:
@@ -489,7 +493,7 @@ class Tree:
             pass  # TODO update the required Node object
 
         if parent is not None:  # Parent can be None!
-            pid = self._get_nid(parent)
+            pid = self._get_nid(parent)  # TODO does not this check parent int tree implicitly?
             if pid not in self.nodes:
                 raise NodeIDAbsentError(f'Parent node ({pid}) is not in the tree!')
         else:
@@ -510,7 +514,7 @@ class Tree:
         """
         Update node's attributes.
 
-        :param node_to_update: the identifier (nid) of modified node
+        :param node_to_update: The Node instance or node ID (nid) of the node to be updated.
         :param attrs: attribute pairs recognized by Node object (Beware, attributes unconditionally updated!)
         :return: None
         """
@@ -532,7 +536,7 @@ class Tree:
             parent_nid = cn.predecessor(self.tree_id)
             if parent_nid is not None:
                 self.nodes[parent_nid].update_successors(nid_to_update, self.node_class.REPLACE, new_identifier_val,
-                                                         tree_id=self.tree_id)
+                                                         self.tree_id)
 
             # * Update children's parents
             for fp in cn.successors(self.tree_id):
@@ -583,7 +587,7 @@ class Tree:
 
         # Delete the node from the parent and from the nodes registry
         node_to_be_removed = self.nodes.pop(nid)
-        parent_node.update_successors(nid, mode=self.node_class.DELETE, tree_id=self.tree_id)
+        parent_node.update_successors(nid, self.node_class.DELETE, tree_id=self.tree_id)
         # Link parent with children
         for child in node_to_be_removed.successors(self.tree_id):
             # Set the children of the node to the parent
@@ -809,9 +813,9 @@ class Tree:
 
         :param node: the reference Node instance or node ID (nid) to start expanding.
         :param level: the node level in the tree (root as level 0).
-        :param filter_fun: the function of one variable to act on the :class:`Node` object.
-            When this parameter is specified, the traversing will not continue to follow
-            children of node whose condition does not pass the filter.
+        :param filter_fun: a function with one parameter executed on a :class:`Node` object.
+            When this parameter is specified, the traversing will will NOT visit those nodes
+            (and their children) which does not pass filtering (evaluates false).
         :param key: the ``key`` param for sorting :class:`Node` objects in the same level.
         :param reverse: the ``reverse`` param for sorting :class:`Node` objects in the same level.
         :param line_type: such as 'ascii' (default), 'ascii-ex', 'ascii-exr', 'ascii-em', 'ascii-emv', 'ascii-emh'
@@ -840,9 +844,13 @@ class Tree:
         """
         Same as show(), but returns an iterator.
         """
+        hack = True  # TODO hack!
         for pre, curr_node in self._print_backend(node, level, filter_fun, key, reverse, line_type):
+            hack = False
             label = get_label_fun(curr_node)
             yield f'{pre}{label}{record_end}'
+        if hack:
+            yield f'{self.__class__.__name__}()'
 
     def _print_backend(self, node, level, filter_fun, key, reverse, line_type):
         """
@@ -851,15 +859,14 @@ class Tree:
         A more elegant way to achieve this function using Stack structure, for constructing the Nodes Stack
          push and pop nodes with additional level info.
         """
-        if node is None:
-            if self.root is not None:
-                current_node = self.nodes[self.root]
-            else:
-                return
-        else:
+        if node is not None:
             current_node = self._get_node(node)
+        elif self.root is None:
+            return
+        else:
+            current_node = self.nodes[self.root]
 
-        if not filter_fun(current_node):
+        if not filter_fun(current_node):  # TODO should not filter the parameter node!
             return
 
         # Set sort key and reversing if needed
@@ -870,7 +877,7 @@ class Tree:
         if line_elems is None:
             raise ValueError(f'Undefined line type ({line_type})! Must choose from {set(self._dt)}!')
 
-        return self._print_backend_recursive(current_node, level, filter_fun, sort_fun, [], *line_elems)
+        yield from self._print_backend_recursive(current_node, level, filter_fun, sort_fun, [], *line_elems)
 
     def _print_backend_recursive(self, node, level, filter_fun, sort_fun, is_last,
                                  dt_vertical_line, dt_line_box, dt_line_corner):
@@ -901,20 +908,19 @@ class Tree:
                                                      dt_vertical_line, dt_line_box, dt_line_corner)
             is_last.pop()
 
-    def to_dict(self, node=None, filter_fun=lambda x: True, key=lambda x: x, reverse=False, with_data=False):
+    def to_dict(self, node=None, filter_fun=lambda x: True, key=lambda x: x, reverse=False, with_data=False) -> dict:
         """
         Transform the whole tree into a dict.
         """
-        if node is None:
-            if self.root is not None:
-                current_node = self.nodes[self.root]
-            else:
-                return
-        else:
+        if node is not None:
             current_node = self._get_node(node)
+        elif self.root is None:
+            return {}
+        else:
+            current_node = self.nodes[self.root]
 
-        if not filter_fun(current_node):
-            return
+        if not filter_fun(current_node):   # TODO should not filter the parameter node!
+            return {}
 
         # Set sort key and reversing if needed
         sort_fun = self._create_sort_fun(key, reverse)
@@ -947,7 +953,7 @@ class Tree:
 
         yield f'{graph} tree {{\n'
 
-        if len(self.nodes) > 0:
+        if self.root is not None:
 
             connections = []
             for curr_node in self.expand_tree(node, self.WIDTH, filter_fun, key, reverse, lookup_nodes=True):

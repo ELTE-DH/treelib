@@ -77,7 +77,7 @@ class TreeCase(unittest.TestCase):
         self.assertTrue(subtree.nodes['jane'].is_root('subtree 2'))
 
     def test_paths_to_leaves(self):
-        paths = self.tree.paths_to_leaves()
+        paths = list(self.tree.paths_to_leaves())
         self.assertEqual(len(paths), 2)
         self.assertTrue(('hárry', 'jane', 'diane') in paths)
         self.assertTrue(('hárry', 'bill', 'george') in paths)
@@ -130,7 +130,7 @@ class TreeCase(unittest.TestCase):
             children = list(self.tree.children(nid, lookup_nodes=False))
             for child in children:
                 self.assertEqual(self.tree[child] in self.tree.get_nodes(), True)
-            children = list(self.tree.children(nid, lookup_nodes=True))
+            children = list(self.tree.children(nid))
             for child in children:
                 self.assertEqual(child in self.tree.get_nodes(), True)
         try:
@@ -181,21 +181,18 @@ class TreeCase(unittest.TestCase):
         self.tree.remove_subtree('jill')
 
     def test_leaves(self):
-        leaves = self.tree.leaves()
+        leaves = list(self.tree.leaves())
         for nid in self.tree.expand_tree():
             self.assertEqual((self.tree[nid].is_leaf('tree 1')) == (self.tree[nid] in leaves), True)
-        leaves = self.tree.leaves(node='jane')
+        leaves = list(self.tree.leaves(node='jane'))
         for nid in self.tree.expand_tree(node='jane'):
             self.assertEqual(self.tree[nid].is_leaf('tree 1') == (self.tree[nid] in leaves), True)
 
     def test_tree_wise_leaves(self):
-        leaves = self.tree.leaves()
+        leaves = list(self.tree.leaves())
         for nid in self.tree.expand_tree():
-            self.assertEqual(
-                (self.tree[nid].is_leaf('tree 1')) == (self.tree[nid] in leaves),
-                True
-            )
-        leaves = self.tree.leaves(node='jane')
+            self.assertEqual((self.tree[nid].is_leaf('tree 1')) == (self.tree[nid] in leaves), True)
+        leaves = list(self.tree.leaves(node='jane'))
         for nid in self.tree.expand_tree(node='jane'):
             self.assertEqual(self.tree[nid].is_leaf('tree 1') == (self.tree[nid] in leaves), True)
 
@@ -432,8 +429,8 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(len(self.tree.nodes.keys()), 0)
 
     def test_siblings(self):
-        self.assertEqual(len(self.tree.siblings('hárry')) == 0, True)
-        self.assertEqual(self.tree.siblings('jane', lookup_nodes=True)[0].nid == 'bill', True)
+        self.assertEqual(len(list(self.tree.siblings('hárry'))) == 0, True)
+        self.assertEqual(list(self.tree.siblings('jane'))[0].nid == 'bill', True)
 
     def test_tree_data(self):
         class Flower(object):
@@ -465,6 +462,7 @@ class TreeCase(unittest.TestCase):
     """
 
     def test_depth(self):
+        self.assertEqual(Tree().depth(), 0)
         self.assertEqual(self.tree.depth('hárry'),  0)
         depth = self.tree.depth()
         self.assertEqual(self.tree.depth('diane'),  depth)
@@ -492,6 +490,7 @@ Hárry
 
         try:
             self.tree.show()
+            Tree().show()  # Empty tree!
         finally:
             sys.stdout.close()
             sys.stdout = sys.__stdout__  # Stops from printing to console

@@ -148,7 +148,7 @@ class Node:
         self.set_predecessor(former_bpointer, new_tree_id)
         former_fpointer = self.successors(former_tree_id)
         # fpointer is a list and would be copied by reference without using deepcopy
-        self.set_successors(copy.deepcopy(former_fpointer), tree_id=new_tree_id)
+        self.set_successors(copy.deepcopy(former_fpointer), new_tree_id)
 
     def delete_pointers(self, tree_id):
         self._predecessor.pop(tree_id, None)
