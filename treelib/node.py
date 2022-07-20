@@ -11,7 +11,7 @@ node tag, parent node, children nodes etc., and some operations for a node.
 import copy
 import uuid
 from collections import defaultdict
-from typing import Any, Union, Hashable, MutableMapping
+from typing import Any, Union, Hashable, MutableMapping, List
 
 
 class Node:
@@ -35,17 +35,17 @@ class Node:
         # The readable node name for humans. This attribute can be accessed and
         #  modified with ``.`` and ``=`` operator respectively.
         if tag is None:
-            self.tag: any = self._identifier
+            self.tag: Any = self._identifier
         else:
-            self.tag: any = tag
+            self.tag: Any = tag
 
         #: Identifier (nid) of the parent's node for every tree_id the node is in (tree_id -> nid mapping).
         self._predecessor: MutableMapping[Hashable, Hashable] = {}
         #: Identifier(s) (nid(s)) of the children's node(s) for every tree_id (tree_id -> nid list mapping).
-        self._successors: MutableMapping[Hashable, list] = defaultdict(list)
+        self._successors: MutableMapping[Hashable, List] = defaultdict(list)
 
         #: User payload associated with this node for every tree_id the node is in (same payload for every tree).
-        self.data: any = data
+        self.data: Any = data
 
     def __lt__(self, other):
         return self.tag < other.tag
@@ -65,21 +65,27 @@ class Node:
 
         self._predecessor[tree_id] = nid
 
-    def successors(self, tree_id: Hashable) -> list:
+    def remove_predecessor(self, tree_id: Hashable) -> None:
+        self._predecessor.pop(tree_id)  # Raises ValueError if tree_id is not in the dict of predecessors.
+
+    def successors(self, tree_id: Hashable) -> List:
         """
         With a getting operator, a list of IDs of node's children is obtained.
         """
         return self._successors[tree_id]
 
-    def set_successors(self, value: list, tree_id: Hashable) -> None:
+    def set_successors(self, value: List, tree_id: Hashable) -> None:
         """
         Set the value of `_successors`.
         With a setting operator, the value must be list and must be converted by the user.
         """
-        if not isinstance(value, list):
+        if not isinstance(value, List):
             raise NotImplementedError(f'Unsupported value type {type(value)}!')
 
         self._successors[tree_id] = value
+
+    def remove_successors(self,  tree_id: Hashable):
+        self._successors.pop(tree_id)  # Raises ValueError if tree_id is not in the dict of successors.
 
     def add_successor(self, nid: Hashable, tree_id: Hashable) -> None:
         self._successors[tree_id].append(nid)
@@ -109,7 +115,8 @@ class Node:
 
         self._identifier = value
 
-    def clone_pointers(self, former_tree_id: Hashable, new_tree_id: Hashable) -> None:
+    # TODO remove reference to the old tree if move is True else is_in_multiple_trees() will not work!
+    def clone_pointers(self, former_tree_id: Hashable, new_tree_id: Hashable, move=False) -> None:
         """
         Copy Node to another tree.
         """

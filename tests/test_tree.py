@@ -175,7 +175,7 @@ class TreeCase(unittest.TestCase):
 
         # Try getting Exception
         node = Node('Test One', 'identifier 1')
-        self.assertRaises(NodeIDAbsentError, self.tree.depth, node)
+        self.assertRaises(AssertionError, self.tree.depth, node)
 
         # Reset the test case
         self.tree.remove_subtree('jill')
@@ -410,7 +410,7 @@ class TreeCase(unittest.TestCase):
             self.assertEqual(nid in self.tree.busearch('diane', lookup_nodes=False), True)
 
     def test_subtree(self):
-        subtree_copy = Tree(self.tree.subtree('jane'), deep=True)
+        subtree_copy = self.tree.subtree('jane', 'subtree', deep=True)
         self.assertEqual(subtree_copy.parent('jane') is None, True)
         subtree_copy['jane'].tag = 'Sweeti'
         self.assertEqual(self.tree['jane'].tag == 'Jane', True)
@@ -466,8 +466,7 @@ class TreeCase(unittest.TestCase):
         self.assertEqual(self.tree.depth('hárry'),  0)
         depth = self.tree.depth()
         self.assertEqual(self.tree.depth('diane'),  depth)
-        # TODO should raise excepiton as subtree is pruned!
-        self.assertEqual(self.tree.depth('diane', lambda x: x.nid != 'jane'), depth - 1)
+        self.assertRaises(NodeIDAbsentError, self.tree.depth, 'diane', lambda x: x.nid != 'jane')
 
     def test_size(self):
         self.assertEqual(self.tree.size(level=2), 2)
@@ -505,7 +504,7 @@ Hárry
         Added by: William Rusnack
         """
         new_tree = Tree()
-        self.assertEqual(len(new_tree.get_nodes()), 0)
+        self.assertEqual(len(list(new_tree.get_nodes())), 0)
         nodes = list()
         nodes.append(new_tree.create_node('root_node'))
         nodes.append(new_tree.create_node('second', parent=new_tree.root))

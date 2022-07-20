@@ -19,7 +19,7 @@ class MultipleRootError(Exception):
     pass
 
 
-class DuplicatedNodeIdError(Exception):
+class DuplicatedNodeIDError(Exception):
     """
     Exception throwed if a node identifier (nid) already exists in a tree.
     """
