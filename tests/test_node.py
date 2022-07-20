@@ -48,6 +48,7 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2._predecessor['tree 1'], 'identifier 1')
         self.node2.set_predecessor(None, 'tree 1')
         self.assertEqual(self.node2.predecessor('tree 1'), None)
+        self.assertRaises(TypeError, self.node2.set_predecessor, {}, 'tree 1')
 
     def test_set_is_leaf(self):
         self.node1.add_successor('identifier 2', 'tree 2')

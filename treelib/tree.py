@@ -525,7 +525,7 @@ class Tree:
             # Updating node id meets following constraints:
             # * Update node ID (nid) property
             cn = self.nodes.pop(nid_to_update)
-            if cn.is_in_other_trees(self.tree_id):
+            if cn.is_in_multiple_trees():
                 raise NodePropertyError('Cannot update node ID as node is in multiple trees!')
             cn.nid = new_identifier_val
 
