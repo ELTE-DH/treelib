@@ -474,7 +474,6 @@ class Tree:
         :return: Node IDs that satisfy the conditions in the defined order.
         :rtype: generator object.
         """
-        # TODO expand_tree and _print_backend and to_dict? What is the difference?
         if node is not None:
             current_node = self._get_node(node)
         elif self.root is None:
@@ -835,17 +834,8 @@ class Tree:
             raise TypeError(f'other_tree is expected to be {self.__class__} not {type(other_tree)} !')
         elif other_tree.root is None:  # Empty tree -> Nothing to do!
             return
-        # elif node is None:  # TODO!
-        #    raise ValueError('Use subtree() instead of pasting into an empty tree!')
-
-        # TODO delete this!
-        if node is None:
-            if self.root is None:  # Add the root of other_tree as the root of empty tree.
-                new_tree_root = other_tree.nodes[other_tree.root]
-                self.add_node(new_tree_root)
-                node = other_tree.root
-            else:
-                raise ValueError('Must define "nid" under a root which the new tree is merged!')
+        elif node is None:
+            raise ValueError('Use subtree() instead of pasting into an empty tree!')
 
         # Paste by children
         for child_nid in other_tree.children(other_tree.root, lookup_nodes=False):
@@ -894,12 +884,11 @@ class Tree:
         """
         Same as show(), but returns an iterator.
         """
-        hack = True  # TODO hack!
-        for pre, curr_node in self._print_backend(node, level, filter_fun, key, reverse, line_type):
-            hack = False
-            label = get_label_fun(curr_node)
-            yield f'{pre}{label}{record_end}'
-        if hack:
+        if self.root is not None:
+            for pre, curr_node in self._print_backend(node, level, filter_fun, key, reverse, line_type):
+                label = get_label_fun(curr_node)
+                yield f'{pre}{label}{record_end}'
+        else:
             yield f'{self.__class__.__name__}()'
 
     def _print_backend(self, node, level, filter_fun, key, reverse, line_type):
@@ -982,7 +971,7 @@ class Tree:
 
         children = []
         for elem in sort_fun(self.children(current_node, filter_fun)):
-            dict_form = self.to_dict(elem, filter_fun, key, reverse, with_data)  # TODO recursive!
+            dict_form = self.to_dict(elem, filter_fun, key, reverse, with_data)  # Recursive!
             children.append(dict_form)
 
         tree_dict[ntag]['children'] = children
