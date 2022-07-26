@@ -6,10 +6,11 @@ Node structure in treelib.
 
 A :class:`Node` object contains basic properties such as node identifier (nid),
 node tag, parent node, children nodes etc., and some operations for a node.
+Allows using a :class:`Node` object in multiple trees.
 """
 
-import copy
-import uuid
+from copy import deepcopy
+from uuid import uuid1
 from collections import defaultdict
 from typing import Any, Union, Hashable, MutableMapping, List
 
@@ -25,15 +26,14 @@ class Node:
         Create a new Node object to be placed inside a Tree object.
         """
 
-        #: If given as a parameter, must be unique (tuple of parent nodes recommended).
+        #: If given as a parameter, it must be unique (tuple of parent nodes recommended).
         if nid is None:
-            nid = str(uuid.uuid1())  # Generate a UUID from a host ID, sequence number, and the current time.
+            nid = str(uuid1())  # Generate a UUID from a host ID, sequence number, and the current time.
         self._identifier: Hashable = nid
 
-        #: None or something else
         #: If None, self._identifier will be set to the tree_id's value.
         # The readable node name for humans. This attribute can be accessed and
-        #  modified with ``.`` and ``=`` operator respectively.
+        #  modified with ``.`` and ``=`` operators respectively.
         if tag is None:
             self.tag: Any = self._identifier
         else:
@@ -66,7 +66,10 @@ class Node:
         self._predecessor[tree_id] = nid
 
     def remove_predecessor(self, tree_id: Hashable) -> None:
-        self._predecessor.pop(tree_id)  # Raises ValueError if tree_id is not in the dict of predecessors.
+        """
+        Remove the value of `_predecessor` for a specific tree_id. (e.g. removing node from the tree).
+        """
+        self._predecessor.pop(tree_id)  # Raises KeyError if tree_id is not in the dict of predecessors.
 
     def successors(self, tree_id: Hashable) -> List:
         """
@@ -85,16 +88,22 @@ class Node:
         self._successors[tree_id] = value
 
     def remove_successors(self,  tree_id: Hashable):
-        self._successors.pop(tree_id)  # Raises ValueError if tree_id is not in the dict of successors.
+        """
+        Remove the value of `_successors` for a specific tree_id. (e.g. removing node from the tree).
+        """
+        self._successors.pop(tree_id)  # Raises KeyError if tree_id is not in the dict of successors.
 
     def add_successor(self, nid: Hashable, tree_id: Hashable) -> None:
+        if nid is None or not isinstance(nid, Hashable):
+            raise TypeError(f'Node ID must be Hashable (except None) not {type(nid)}!')
+
         self._successors[tree_id].append(nid)
 
     def remove_successor(self, nid: Hashable, tree_id: Hashable) -> None:
         self._successors[tree_id].remove(nid)  # Raises ValueError if nid is not in the list of successors.
 
     def replace_successor(self, nid: Hashable, tree_id: Hashable, replace: Hashable) -> None:
-        ind = self._successors[tree_id].index(nid)
+        ind = self._successors[tree_id].index(nid)  # Raises ValueError if nid is not in the list of successors.
         self._successors[tree_id][ind] = replace
 
     @property
@@ -110,13 +119,12 @@ class Node:
         """
         Set the value of `_identifier`.
         """
-        if value is None:
-            raise ValueError('Node ID can not be None!')
+        if value is None or not isinstance(value, Hashable):
+            raise TypeError(f'Node ID must be Hashable (except None) not {type(value)}!')
 
         self._identifier = value
 
-    # TODO remove reference to the old tree if move is True else is_in_multiple_trees() will not work!
-    def clone_pointers(self, former_tree_id: Hashable, new_tree_id: Hashable, move=False) -> None:
+    def clone_pointers(self, former_tree_id: Hashable, new_tree_id: Hashable, move: bool = False) -> None:
         """
         Copy Node to another tree.
         """
@@ -128,8 +136,11 @@ class Node:
         former_fpointer = self._successors[former_tree_id]
         # 3. Set the children of the current node in the new tree.
         # fpointer is a list and without using deepcopy it would be copied by reference
-        # and would mess up the two trees upon modification (i.e. both would be changed at the same time).
-        self._successors[new_tree_id] = copy.deepcopy(former_fpointer)
+        # and would mess up the two (or more) trees upon modification (i.e. both would be changed at the same time).
+        self._successors[new_tree_id] = deepcopy(former_fpointer)
+        if move:  # Remove Node from the old tree.
+            self._predecessor.pop(former_tree_id)
+            self._successors.pop(former_tree_id)
 
     def delete_pointers(self, tree_id: Hashable) -> None:
         self._predecessor.pop(tree_id, None)

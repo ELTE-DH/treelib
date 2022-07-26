@@ -7,7 +7,7 @@ import os
 
 import unittest
 from treelib import Tree, Node
-from treelib.tree import NodeIDAbsentError, LoopError
+from treelib.tree import NodeIDAbsentError, LoopError, DuplicatedNodeIDError
 
 
 class TreeCase(unittest.TestCase):
@@ -253,7 +253,7 @@ class TreeCase(unittest.TestCase):
         new_tree = Tree()
         new_tree.create_node('Jill', 'jill')
         new_tree.create_node('Mark', 'mark', parent='jill')
-        self.tree.paste('jane', new_tree)
+        self.tree.paste_subtree('jane', new_tree)
         self.assertEqual('jill' in self.tree.children('jane', lookup_nodes=False), True)
 
         self.assertEqual(self.tree.show(), """Hárry
@@ -280,7 +280,7 @@ class TreeCase(unittest.TestCase):
         # Merge on empty initial tree
         t1 = Tree(tree_id='t1')
         t2 = self.get_t2()
-        t1.merge(nid=None, new_tree=t2)
+        t1.merge_subtree(node=None, other_tree=t2)
 
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r2')
@@ -291,10 +291,10 @@ class TreeCase(unittest.TestCase):
     └── D1
 """)
 
-        # Merge empty new_tree (on root)
+        # Merge empty other_tree (on root)
         t1 = self.get_t1()
         t2 = Tree(tree_id='t2')
-        t1.merge(nid='r', new_tree=t2)
+        t1.merge_subtree(node='r', other_tree=t2)
 
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
@@ -308,7 +308,7 @@ class TreeCase(unittest.TestCase):
         # Merge at root
         t1 = self.get_t1()
         t2 = self.get_t2()
-        t1.merge(nid='r', new_tree=t2)
+        t1.merge_subtree(node='r', other_tree=t2)
 
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
@@ -326,7 +326,7 @@ class TreeCase(unittest.TestCase):
         # Merge on node
         t1 = self.get_t1()
         t2 = self.get_t2()
-        t1.merge(nid='b', new_tree=t2)
+        t1.merge_subtree(node='b', other_tree=t2)
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
         self.assertNotIn('r2', t1.nodes.keys())
@@ -345,7 +345,7 @@ class TreeCase(unittest.TestCase):
         # Paste under root
         t1 = self.get_t1()
         t2 = self.get_t2()
-        t1.paste(nid='r', new_tree=t2)
+        t1.paste_subtree(node='r', other_tree=t2)
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
         self.assertEqual(t1.parent('r2').nid, 'r')
@@ -364,20 +364,20 @@ class TreeCase(unittest.TestCase):
         t1 = self.get_t1()
         t2 = self.get_t2()
         with self.assertRaises(NodeIDAbsentError) as e:
-            t1.paste(nid='not_existing', new_tree=t2)
+            t1.paste_subtree(node='not_existing', other_tree=t2)
         self.assertEqual(e.exception.args[0], 'Node (not_existing) is not in the tree!')
 
         # Paste under None nid
         t1 = self.get_t1()
         t2 = self.get_t2()
         with self.assertRaises(ValueError) as e:
-            t1.paste(nid=None, new_tree=t2)
-        self.assertEqual(e.exception.args[0], 'Must define "nid" under which new tree is pasted!')
+            t1.paste_subtree(node=None, other_tree=t2)
+        self.assertEqual(e.exception.args[0], 'Use subtree() instead of pasting into an empty tree!')
 
         # Paste under node
         t1 = self.get_t1()
         t2 = self.get_t2()
-        t1.paste(nid='b', new_tree=t2)
+        t1.paste_subtree(node='b', other_tree=t2)
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
         self.assertEqual(t1.parent('b').nid, 'r')
@@ -391,10 +391,10 @@ class TreeCase(unittest.TestCase):
         └── D
             └── D1
 """)
-        # Paste empty new_tree (under root)
+        # Paste empty other_tree (under root)
         t1 = self.get_t1()
         t2 = Tree(tree_id='t2')
-        t1.paste(nid='r', new_tree=t2)
+        t1.paste_subtree(node='r', other_tree=t2)
 
         self.assertEqual(t1.tree_id, 't1')
         self.assertEqual(t1.root, 'r')
@@ -420,8 +420,10 @@ class TreeCase(unittest.TestCase):
 
     def test_remove_subtree(self):
         subtree_shallow = self.tree.pop_subtree('jane')
+        self.assertEqual('diane' in subtree_shallow.children('jane', lookup_nodes=False), True)
         self.assertEqual('jane' not in self.tree.children('hárry', lookup_nodes=False), True)
-        self.tree.paste('hárry', subtree_shallow)
+        self.tree.paste_subtree('hárry', subtree_shallow)
+        self.assertEqual('diane' in self.tree.children('jane', lookup_nodes=False), True)
 
     def test_remove_subtree_whole_tree(self):
         self.tree.pop_subtree('hárry')
@@ -444,18 +446,18 @@ class TreeCase(unittest.TestCase):
     # TODO implement with custom function
     """
     def test_show_data_property(self):
-        new_tree = Tree()
+        other_tree = Tree()
 
         sys.stdout = open(os.devnull, 'w')  # Stops from printing to console
 
         try:
-            new_tree.show()
+            other_tree.show()
 
             class Flower(object):
                 def __init__(self, color):
                     self.color = color
-            new_tree.create_node('Jill', 'jill', data=Flower('white'))
-            new_tree.show(data_property='color')
+            other_tree.create_node('Jill', 'jill', data=Flower('white'))
+            other_tree.show(data_property='color')
         finally:
             sys.stdout.close()
             sys.stdout = sys.__stdout__  # Stops from printing to console
@@ -584,8 +586,6 @@ Hárry
         node = tree.create_node()
         self.assertTrue(isinstance(node, SubNode))
 
-        tree = Tree(node_class=SubNode)
-        node = tree.create_node()
         self.assertTrue(isinstance(node, SubNode))
 
     def test_shallow_copy_hermetic_pointers(self):
@@ -619,9 +619,9 @@ Hárry
         t2.create_node(nid='A')
         t2.create_node(nid='B', parent='A')
 
-        with self.assertRaises(ValueError) as e:
-            t1.paste('A', t2)
-        self.assertEqual(e.exception.args, ('Duplicated nodes [\'A\'] exists.',))
+        with self.assertRaises(DuplicatedNodeIDError) as e:
+            t1.paste_subtree('A', t2)
+        self.assertEqual(e.exception.args, ('Duplicated nodes [\'A\'] exists!',))
 
     def test_shallow_paste(self):
         t1 = Tree()
@@ -633,9 +633,9 @@ Hárry
         t3 = Tree()
         n3 = t3.create_node(nid='C')
 
-        t1.paste(n1.nid, t2)
+        t1.paste_subtree(n1.nid, t2)
         self.assertEqual(t1.to_dict(), {'A': {'children': ['B']}})
-        t1.paste(n1.nid, t3)
+        t1.paste_subtree(n1.nid, t3)
         self.assertEqual(t1.to_dict(), {'A': {'children': ['B', 'C']}})
 
         self.assertEqual(t1.depth(n1.nid), 0)
