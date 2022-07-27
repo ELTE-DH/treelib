@@ -67,6 +67,8 @@ class NodeCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.node1.nid = None
 
+    def test_predecessor_pop(self):
+        self.node1._predecessor.pop('identifier 2', 'tree 1')
 
     def test_data(self):
 
