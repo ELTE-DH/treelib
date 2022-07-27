@@ -68,7 +68,13 @@ class NodeCase(unittest.TestCase):
             self.node1.nid = None
 
     def test_predecessor_pop(self):
-        self.node1._predecessor.pop('identifier 2', 'tree 1')
+        self.node1._predecessor.pop('identifier 1', 'tree 1')
+        self.node1._predecessor.pop('identifier 2', None)
+
+    def test_successors_pop(self):
+        self.node1._successors.pop('identifier 3', 'tree 3')
+        self.node1._successors.pop('identifier 4', None)
+
 
     def test_data(self):
 
