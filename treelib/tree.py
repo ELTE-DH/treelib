@@ -12,8 +12,9 @@ is required to create the tree.
 
 from uuid import uuid1
 from copy import deepcopy
-from itertools import chain
 from functools import partial
+from collections import deque
+from itertools import chain, islice
 from typing import Any, Union, Hashable, MutableMapping, Tuple
 
 from .exceptions import NodePropertyError, NodeIDAbsentError, MultipleRootError, DuplicatedNodeIDError, \
@@ -173,6 +174,15 @@ class Tree:
                 raise NodeIDAbsentError(f'Node ({node}) is not in the tree!')
 
         return curr_node
+
+    def _check_initial_node(self, node):
+        if node is not None:
+            current_node = self._get_node(node)  # A non-root node.
+        elif self.root is None:
+            current_node = None  # Empty tree.
+        else:
+            current_node = self.nodes[self.root]  # Root node.
+        return current_node
 
     # SIMPLE READER FUNCTIONS ------------------------------------------------------------------------------------------
     def size(self, level: int = None) -> int:
@@ -474,14 +484,8 @@ class Tree:
         :return: Node IDs that satisfy the conditions in the defined order.
         :rtype: generator object.
         """
-        if node is not None:
-            current_node = self._get_node(node)
-        elif self.root is None:
-            return
-        else:  # node is None -> Traverse the full tree from root.
-            current_node = self.nodes[self.root]
-
-        if not filter_fun(current_node):  # Subtree filtered out.
+        current_node = self._check_initial_node(node)
+        if current_node is None or not filter_fun(current_node):  # Subtree filtered out.
             return
 
         lookup_nodes_fun = self._get_lookup_nodes_fun(lookup_nodes)
@@ -707,13 +711,13 @@ class Tree:
         """
         Get a subtree with ``node`` Node instance or node ID (nid) being the root.
 
-        For the original tree, this method is similar to`remove_subtree(self,nid)`,
-         because given node and its children are removed from the original tree in both methods.
-        For the returned value and performance, these two methods are
-        different:
+        For the original tree, this method is similar to`remove_subtree()`, and `subtree()`
+         because given node and its children are removed from the original tree and/or a new tree instance is created
+         in both methods. For the returned value and performance, these methods are different:
 
             * `remove_subtree` returns the number of deleted nodes;
             * `pop_subtree` returns a subtree of deleted nodes;
+            * `subtree` returns a subtree, but does not delete anything;
 
         You are always suggested to use `remove_subtree` if your only to delete nodes from a tree,
          as the other one need memory allocation to store the new tree.
@@ -882,30 +886,14 @@ class Tree:
     def show_iter(self, node=None, level=0, filter_fun=lambda x: True, key=lambda x: x, reverse=False,
                   line_type='ascii-ex', get_label_fun=lambda node: node.tag, record_end='\n'):
         """
-        Same as show(), but returns an iterator.
-        """
-        if self.root is not None:
-            for pre, curr_node in self._print_backend(node, level, filter_fun, key, reverse, line_type):
-                label = get_label_fun(curr_node)
-                yield f'{pre}{label}{record_end}'
-        else:
-            yield f'{self.__class__.__name__}()'
-
-    def _print_backend(self, node, level, filter_fun, key, reverse, line_type):
-        """
-        Set up depth-fist search
+        Same as show(), but returns an iterator. Set up depth-fist search.
 
         A more elegant way to achieve this function using Stack structure, for constructing the Nodes Stack
          push and pop nodes with additional level info.
         """
-        if node is not None:
-            current_node = self._get_node(node)
-        elif self.root is None:
-            return
-        else:
-            current_node = self.nodes[self.root]
-
-        if not filter_fun(current_node):
+        current_node = self._check_initial_node(node)
+        if current_node is None or not filter_fun(current_node):
+            yield f'{self.__class__.__name__}()'  # Empty tree or initial node is filtered out.
             return
 
         # Set sort key and reversing if needed
@@ -916,14 +904,17 @@ class Tree:
         if line_elems is None:
             raise ValueError(f'Undefined line type ({line_type})! Must choose from {set(self._dt)}!')
 
-        yield from self._print_backend_recursive(current_node, level, filter_fun, sort_fun, [], *line_elems)
+        for pre, curr_node in self._print_backend_recursive(current_node, level, filter_fun, sort_fun, deque(),
+                                                            *line_elems):
+            label = get_label_fun(curr_node)
+            yield f'{pre}{label}{record_end}'
 
     def _print_backend_recursive(self, node, level, filter_fun, sort_fun, is_last,
-                                 dt_vertical_line, dt_line_box, dt_line_corner):
+                                 dt_vertical_line, dt_line_tee, dt_line_corner):
         # Format current level
         lines = []
         if level > 0:
-            for curr_is_last in is_last[:-1]:
+            for curr_is_last in islice(is_last, len(is_last)-1):
                 if curr_is_last:
                     line = ' ' * 4
                 else:
@@ -933,9 +924,9 @@ class Tree:
             if is_last[-1]:
                 lines.append(dt_line_corner)
             else:
-                lines.append(dt_line_box)
+                lines.append(dt_line_tee)
 
-        yield ''.join(lines), node  # Yield the current level
+        yield ''.join(lines), node  # Yield the current level.
 
         # Go deeper!
         children = list(self.children(node, filter_fun))
@@ -944,41 +935,33 @@ class Tree:
         for idx, child in enumerate(sort_fun(children)):
             is_last.append(idx == idxlast)
             yield from self._print_backend_recursive(child, level + 1, filter_fun, sort_fun, is_last,
-                                                     dt_vertical_line, dt_line_box, dt_line_corner)
+                                                     dt_vertical_line, dt_line_tee, dt_line_corner)
             is_last.pop()
 
     def to_dict(self, node=None, filter_fun=lambda x: True, key=lambda x: x, reverse=False, with_data=False) -> dict:
         """
         Transform the whole tree into a dict.
         """
-        if node is not None:
-            current_node = self._get_node(node)
-        elif self.root is None:
-            return {}
-        else:
-            current_node = self.nodes[self.root]
-
-        if not filter_fun(current_node):
-            return {}
+        current_node = self._check_initial_node(node)
+        if current_node is None or not filter_fun(current_node):
+            return {}  # Empty tree or initial node is filtered out.
 
         # Set sort key and reversing if needed
         sort_fun = self._create_sort_fun(key, reverse)
 
         ntag = current_node.tag
-        tree_dict = {ntag: {'children': []}}
-        if with_data:
-            tree_dict[ntag]['data'] = current_node.data
+        if not current_node.is_leaf(self.tree_id):
+            children = []
+            tree_dict = {ntag: {'children': children}}
+            if with_data:
+                tree_dict[ntag]['data'] = current_node.data
 
-        children = []
-        for elem in sort_fun(self.children(current_node, filter_fun)):
-            dict_form = self.to_dict(elem, filter_fun, key, reverse, with_data)  # Recursive!
-            children.append(dict_form)
-
-        tree_dict[ntag]['children'] = children
-
-        if len(children) == 0:  # Handle leaves
+            for elem in sort_fun(self.children(current_node, filter_fun)):
+                dict_form = self.to_dict(elem, filter_fun, sort_fun, with_data)  # Recursive! Width-first.
+                children.append(dict_form)
+        else:  # Handle leaves.
             if not with_data:
-                tree_dict = current_node.tag
+                tree_dict = ntag
             else:
                 tree_dict = {ntag: {'data': current_node.data}}
 
