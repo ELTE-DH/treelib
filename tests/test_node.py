@@ -62,6 +62,12 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1.is_leaf('tree 1'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
 
+    def test_unhashables(self):
+        self.assertRaises(TypeError, self.node1.add_successor, set(), dict())
+        with self.assertRaises(TypeError):
+            self.node1.nid = None
+
+
     def test_data(self):
 
         class Flower(object):
