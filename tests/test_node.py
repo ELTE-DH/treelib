@@ -17,6 +17,32 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1._successors, defaultdict(list))
         self.assertEqual(self.node1.data, None)
 
+        a = Node(tag=set())
+        b = Node(nid=set())
+        c = Node(data=set())
+
+        d = Node()
+        self.assertTrue((d._identifier is not None))
+        self.assertTrue(isinstance(d._identifier, str))  # UUID1
+
+        e = Node(42)
+        self.assertTrue((e._identifier == 42))
+        self.assertTrue(e.tag == e._identifier)
+
+        f = Node(tag=42)
+        self.assertTrue(e.tag == 42)
+        self.assertTrue(e.tag != e._identifier)
+        self.assertTrue(e.data is None)
+
+        g = Node(data=dict())
+        self.assertTrue(g.data == dict())
+
+        self.assertTrue(self.node1 < self.node2)
+
+    def test_predecessor(self):
+        pass  # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
+
+
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
         self.assertEqual(self.node1.tag, 'Test 1')

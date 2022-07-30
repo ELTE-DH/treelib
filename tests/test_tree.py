@@ -10,6 +10,14 @@ from treelib import Tree, Node
 from treelib.tree import NodeIDAbsentError, LoopError, DuplicatedNodeIDError
 
 
+class SubNode(Node):
+    pass
+
+
+class NotSubNode(Exception):
+    pass
+
+
 class TreeCase(unittest.TestCase):
     def setUp(self):
         """
@@ -28,6 +36,9 @@ class TreeCase(unittest.TestCase):
 
         self.tree = tree
         self.copytree = Tree(self.tree, deep=True)
+
+        self.subnode = SubNode()
+        self.subnode = NotSubNode()
 
     @staticmethod
     def get_t1():
