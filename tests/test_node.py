@@ -2,7 +2,7 @@ import unittest
 
 from collections import defaultdict
 from treelib import Node
-from typing import Hashable
+from typing import Hashable, Any
 
 
 class NodeCase(unittest.TestCase):
@@ -17,28 +17,23 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2.nid, 'identifier 2')
 
         a = Node(tag=set())
-        self.assertFalse(isinstance(a.tag, str))
-
-        b = Node(nid=set())
-        self.assertRaises(TypeError, isinstance(b.tag, set))
-
-        self.assertEqual(self.node1._predecessor, {})
-        self.assertEqual(self.node1._successors, defaultdict(list))
-        self.assertEqual(self.node1.data, None)
-
-        a = Node(tag=set())
         self.assertTrue((a.tag is not None))
+        self.assertTrue((a.tag == set()))
         self.assertFalse(isinstance(a.tag, Hashable))
         self.assertRaises(TypeError, isinstance(a.tag, set))
 
         b = Node(nid=set())
         self.assertTrue((b._identifier is not None))
+        self.assertTrue((b._identifier == set()))
         self.assertFalse(isinstance(b._identifier, Hashable))
         self.assertRaises(TypeError, isinstance(b._identifier, set))
 
-        c = Node(data=set())
+        c = Node(data=set('a'))
+        self.assertTrue((c.data is not None))
+        self.assertTrue((c.data == set('a')))
+        self.assertTrue((c.data is not Any))
 
-        d = Node(None)
+        d = Node()
         self.assertTrue((d._identifier is not None))
         self.assertTrue(isinstance(d._identifier, str))  # UUID1
 
@@ -53,6 +48,10 @@ class NodeCase(unittest.TestCase):
 
         g = Node(data=dict())
         self.assertTrue(g.data == dict())
+
+        self.assertEqual(self.node1._predecessor, {})
+        self.assertEqual(self.node1._successors, defaultdict(list))
+        self.assertEqual(self.node1.data, None)
 
         self.assertTrue(self.node1 < self.node2)
 
