@@ -38,16 +38,20 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(isinstance(d._identifier, str))  # UUID1
 
         e = Node(nid=42)
+        f = Node(tag=42)
+
         self.assertTrue((e._identifier == 42))
         self.assertTrue(e.tag == e._identifier)
+        self.assertTrue(e._identifier == f._identifier)  # Meg kell kérdezni!
 
-        f = Node(tag=42)
         self.assertTrue(f.tag == 42)
         self.assertFalse(f.tag != e._identifier)
         self.assertTrue(f.data is None)
 
         g = Node(data=dict())
         self.assertTrue(g.data == dict())
+        self.assertTrue(g.data is not Hashable)
+        self.assertFalse(g.identifier is not None)
 
         self.assertEqual(self.node1._predecessor, {})
         self.assertEqual(self.node1._successors, defaultdict(list))
