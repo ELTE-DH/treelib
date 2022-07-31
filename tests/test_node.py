@@ -88,8 +88,10 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1._predecessor[1], 'test predecessor')
         self.assertIsNone(self.node1._predecessor[3])
 
-        pass  # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
+        # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
+    def test_set_predecessor(self):
+        s
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
