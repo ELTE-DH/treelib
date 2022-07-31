@@ -1,8 +1,8 @@
 import unittest
 
 from collections import defaultdict
-from treelib import Node
-from typing import Hashable, Any
+from treelib import Node, Tree
+from typing import Any, Union, Hashable, MutableMapping, List
 
 
 class NodeCase(unittest.TestCase):
@@ -75,8 +75,19 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2.data, None)
 
         self.assertTrue(self.node1 < self.node2)
+        self.assertFalse(self.node3 < self.node4)  # Ezt nem értem
 
     def test_predecessor(self):
+        self.node1._predecessor[1] = 'test predecessor'
+        self.node1._predecessor[2] = {}
+        self.node1._predecessor[3] = None
+        self.assertFalse(self.node1._predecessor[1] is Hashable)  # ez miért nem Hashable?
+        self.assertFalse(self.node1._predecessor[2] is Hashable)
+        self.assertFalse(self.node1._predecessor[1] == str)  # ezt sem értem, ha value egy string, akkor miért nem lesz
+                                                             # string a típus?
+        self.assertEqual(self.node1._predecessor[1], 'test predecessor')
+        self.assertIsNone(self.node1._predecessor[3])
+
         pass  # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
 
