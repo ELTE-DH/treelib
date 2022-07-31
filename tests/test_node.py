@@ -81,7 +81,7 @@ class NodeCase(unittest.TestCase):
         self.node1._predecessor[1] = 'test predecessor'
         self.node1._predecessor[2] = {}
         self.node1._predecessor[3] = None
-        self.assertFalse(self.node1._predecessor[1] is Hashable)  # ez miért nem Hashable?
+        self.assertFalse(self.node1._predecessor[1] is Hashable) 
         self.assertFalse(self.node1._predecessor[2] is Hashable)
         self.assertFalse(self.node1._predecessor[1] == str)  # ezt sem értem, ha value egy string, akkor miért nem lesz
                                                              # string a típus?
