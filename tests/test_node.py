@@ -9,12 +9,21 @@ class NodeCase(unittest.TestCase):
     def setUp(self):
         self.node1 = Node('Test One', 'identifier 1')
         self.node2 = Node('Test Two', 'identifier 2')
+        self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
+        self.node4 = Node('Test Four', None , None)
 
     def test_initialization(self):
         self.assertEqual(self.node1.tag, 'Test One')
         self.assertEqual(self.node1.nid, 'identifier 1')
         self.assertEqual(self.node2.tag, 'Test Two')
         self.assertEqual(self.node2.nid, 'identifier 2')
+        self.assertEqual(self.node3.tag, 'Test Three')
+        self.assertEqual(self.node3.nid, 'identifier 3')
+        self.assertEqual(self.node3.data, [3, 5, 10])
+
+        self.assertFalse(self.node3.nid == self.node4.nid)
+        self.assertTrue(self.node4.nid is not None)
+        self.assertTrue(self.node4.data is None)
 
         a = Node(tag=set())
         self.assertTrue((a.tag is not None))
@@ -42,7 +51,7 @@ class NodeCase(unittest.TestCase):
 
         self.assertTrue((e._identifier == 42))
         self.assertTrue(e.tag == e._identifier)
-        self.assertTrue(e._identifier == f._identifier)  # Meg kell kérdezni!
+        self.assertTrue(e._identifier != f._identifier)
 
         self.assertTrue(f.tag == 42)
         self.assertFalse(f.tag != e._identifier)
@@ -51,11 +60,19 @@ class NodeCase(unittest.TestCase):
         g = Node(data=dict())
         self.assertTrue(g.data == dict())
         self.assertTrue(g.data is not Hashable)
-        self.assertFalse(g.identifier is not None)
+        self.assertTrue(g._identifier is not None)
 
         self.assertEqual(self.node1._predecessor, {})
+        self.assertTrue(self.node1._predecessor is not Hashable)
+        self.assertTrue(self.node1._predecessor == {})
         self.assertEqual(self.node1._successors, defaultdict(list))
-        self.assertEqual(self.node1.data, None)
+        self.assertFalse(self.node1._successors is Hashable)
+        self.assertTrue(self.node1._successors == defaultdict(list))
+
+        self.node1.data = ['b', 'c']
+        self.assertTrue(self.node1.data is not None)
+
+        self.assertEqual(self.node2.data, None)
 
         self.assertTrue(self.node1 < self.node2)
 
