@@ -83,11 +83,9 @@ class NodeCase(unittest.TestCase):
         self.node1._predecessor[3] = None
         self.assertFalse(self.node1._predecessor[1] is Hashable)
         self.assertFalse(self.node1._predecessor[2] is Hashable)
-        self.assertFalse(self.node1._predecessor[1] == str)  # ezt sem értem, ha value egy string, akkor miért nem lesz
-                                                             # string a típus?
+        self.assertTrue(isinstance(self.node1._predecessor[1], str))
         self.assertEqual(self.node1._predecessor[1], 'test predecessor')
         self.assertIsNone(self.node1._predecessor[3])
-
         # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
     def test_set_predecessor(self):
@@ -110,6 +108,12 @@ class NodeCase(unittest.TestCase):
         self.node3.set_predecessor(tuple, 'tree 6')
         self.assertEqual(self.node3._predecessor['tree 6'], tuple)
         self.assertEqual(self.node3.predecessor('tree 6'), tuple)
+
+
+    def test_remove_predecessor(self):
+        pass
+
+
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
