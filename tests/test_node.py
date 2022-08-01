@@ -11,6 +11,7 @@ class NodeCase(unittest.TestCase):
         self.node2 = Node('Test Two', 'identifier 2')
         self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
         self.node4 = Node('Test Four', None , None)
+        self.node5 = Node('Test Five', 'identifier 5')
 
     def test_initialization(self):
         self.assertEqual(self.node1.tag, 'Test One')
@@ -79,7 +80,7 @@ class NodeCase(unittest.TestCase):
 
     def test_predecessor(self):
         self.node1._predecessor[1] = 'test predecessor'
-        self.node1._predecessor[2] = {}
+        self.node1._predecessor[2] = {'tree 2'}
         self.node1._predecessor[3] = None
         self.assertFalse(self.node1._predecessor[1] is Hashable)
         self.assertFalse(self.node1._predecessor[2] is Hashable)
@@ -95,7 +96,6 @@ class NodeCase(unittest.TestCase):
         self.node1.set_predecessor(None, 'tree 3')
         self.assertEqual(self.node1.predecessor('tree 3'), None)
         self.assertRaises(TypeError, self.node1.set_predecessor, {}, 'tree 3')
-
         self.node2.set_predecessor('identifier 4', 'tree 4')
         self.assertFalse(self.node2.set_predecessor('identifier 4', 'tree 4') is Hashable)
         self.assertEqual(self.node2.predecessor('tree 4'), 'identifier 4')
@@ -109,10 +109,15 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node3._predecessor['tree 6'], tuple)
         self.assertEqual(self.node3.predecessor('tree 6'), tuple)
 
+        self.node5.set_predecessor('identifier 10', 'tree 10')
 
     def test_remove_predecessor(self):
-        pass
-
+        self.node5.set_predecessor('tree 10', 'identifier 10')
+        self.node5.set_predecessor('tree 10', 'identifier 6')
+        self.node5.set_predecessor('tree 5', 'identifier 9')
+        self.node5.remove_predecessor('identifier 6')
+        self.node5.remove_predecessor('identifier 9')
+        self.assertEqual(self.node5._predecessor['identifier 10'], 'tree 10')
 
 
     def test_set_tag(self):
