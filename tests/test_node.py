@@ -120,6 +120,8 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node5._predecessor['identifier 10'], 'tree 10')
         self.assertRaises(TypeError, self.node5.remove_predecessor, 'identifier 7', 'tree 8')
 
+    def test_successors(self):
+        pass
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
