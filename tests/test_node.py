@@ -91,7 +91,25 @@ class NodeCase(unittest.TestCase):
         # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
     def test_set_predecessor(self):
-        pass
+        self.node1.set_predecessor('identifier 3', 'tree 3')
+        self.assertEqual(self.node1.predecessor('tree 3'), 'identifier 3')
+        self.assertEqual(self.node1._predecessor['tree 3'], 'identifier 3')
+        self.node1.set_predecessor(None, 'tree 3')
+        self.assertEqual(self.node1.predecessor('tree 3'), None)
+        self.assertRaises(TypeError, self.node1.set_predecessor, {}, 'tree 3')
+
+        self.node2.set_predecessor('identifier 4', 'tree 4')
+        self.assertFalse(self.node2.set_predecessor('identifier 4', 'tree 4') is Hashable)
+        self.assertEqual(self.node2.predecessor('tree 4'), 'identifier 4')
+        self.assertEqual(self.node2._predecessor['tree 4'], 'identifier 4')
+        self.assertTrue(self.node2._predecessor['tree 4'] is not Hashable)
+        self.assertRaises(TypeError, self.node1.set_predecessor, [], 'tree 4')
+
+        self.assertRaises(TypeError, self.node1.set_predecessor, 'identifier 5', [])
+
+        self.node3.set_predecessor(tuple, 'tree 6')
+        self.assertEqual(self.node3._predecessor['tree 6'], tuple)
+        self.assertEqual(self.node3.predecessor('tree 6'), tuple)
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
@@ -117,14 +135,6 @@ class NodeCase(unittest.TestCase):
         self.node1.set_successors([], 'tree 1')
         self.assertEqual(self.node1._successors['tree 1'], [])
         self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, 'tree 1')
-
-    def test_set_predecessor(self):
-        self.node2.set_predecessor('identifier 1', 'tree 1')
-        self.assertEqual(self.node2.predecessor('tree 1'), 'identifier 1')
-        self.assertEqual(self.node2._predecessor['tree 1'], 'identifier 1')
-        self.node2.set_predecessor(None, 'tree 1')
-        self.assertEqual(self.node2.predecessor('tree 1'), None)
-        self.assertRaises(TypeError, self.node2.set_predecessor, {}, 'tree 1')
 
     def test_set_is_leaf(self):
         self.node1.add_successor('identifier 2', 'tree 2')
