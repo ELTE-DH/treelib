@@ -135,6 +135,12 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(NotImplementedError, self.node5.set_successors, tuple, 'identifier 5')
         self.assertRaises(NotImplementedError, self.node5.set_successors, (), 'identifier 5')
 
+    def test_remove_successors(self):
+        self.node4.set_successors([1, 2, 3], 'identifier 4')
+        self.node4.set_successors([10, 20], 'identifier 6')
+        self.node4.remove_successors('identifier 4')
+        
+
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
         self.assertEqual(self.node1.tag, 'Test 1')
