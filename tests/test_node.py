@@ -142,7 +142,6 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(isinstance(self.node4.successors('identifier 6'), list))
         self.assertTrue(self.node4.successors('identifier 6') is not None)
 
-
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
         self.assertEqual(self.node1.tag, 'Test 1')
