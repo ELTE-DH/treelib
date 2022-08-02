@@ -121,7 +121,12 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(TypeError, self.node5.remove_predecessor, 'identifier 7', 'tree 8')
 
     def test_successors(self):
-        pass
+        self.node3.successors('identifier 3')
+        self.node2.successors('identifier 2')
+        self.node1.successors(None)
+        self.assertFalse(self.node3.successors('identifier 3') is Hashable)
+        self.assertFalse(self.node1.successors(None) is None)
+
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
