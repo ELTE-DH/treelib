@@ -125,7 +125,6 @@ class NodeCase(unittest.TestCase):
         self.node2.successors('identifier 2')
         self.node1.successors(None)
         self.assertFalse(self.node3.successors('identifier 3') is Hashable)
-        self.assertFalse(self.node1.successors(None) is None)
 
 
     def test_set_tag(self):
