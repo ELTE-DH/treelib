@@ -130,8 +130,10 @@ class NodeCase(unittest.TestCase):
         self.node4.set_successors([1, 2, 3], 'identifier 4')
         self.assertTrue(isinstance(self.node4.successors('identifier 4'), list))
         self.assertTrue(self.node4.successors('identifier 4') is not Hashable)
-
-
+        self.assertRaises(NotImplementedError, self.node5.set_successors, {}, 'identifier 5')
+        self.assertRaises(NotImplementedError, self.node5.set_successors, '', 'identifier 5')
+        self.assertRaises(NotImplementedError, self.node5.set_successors, tuple, 'identifier 5')
+        self.assertRaises(NotImplementedError, self.node5.set_successors, (), 'identifier 5')
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
