@@ -141,6 +141,20 @@ class NodeCase(unittest.TestCase):
         self.node4.remove_successors('identifier 4')
         self.assertTrue(isinstance(self.node4.successors('identifier 6'), list))
         self.assertTrue(self.node4.successors('identifier 6') is not None)
+        self.assertRaises(KeyError, self.node4.remove_successors, 'identifier 8')
+
+    def test_add_successor(self):
+        self.node4.set_successors([1, 2, 3], 'identifier 4')
+        self.node4.add_successor('identifier 2', 'tree 2')
+        self.node4.add_successor(int, 'tree 3')
+        self.node4.add_successor(tuple, 'tree 7')
+        self.assertTrue(isinstance(self.node4.successors('identifier 2'), list))
+        self.assertTrue(isinstance(self.node4.successors(int), list))
+        self.assertTrue(isinstance(self.node4.successors(tuple), list))
+        self.assertRaises(TypeError, self.node4.add_successor, [], 'identifier 5')
+
+    def test_remove_successor(self):
+        pass
 
     def test_set_tag(self):
         self.node1.tag = 'Test 1'
