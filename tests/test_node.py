@@ -154,6 +154,15 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(TypeError, self.node4.add_successor, [], 'identifier 5')
 
     def test_remove_successor(self):
+        self.node4.set_successors([1, 2, 3], 'identifier 4')
+        self.node4.add_successor('identifier 2', 'tree 2')
+        self.node4.add_successor(int, 'tree 3')
+        self.node4.add_successor(tuple, 'tree 7')
+        self.node4.remove_successor('identifier 2', 'tree 2')
+        self.assertEqual(self.node2.is_leaf('tree 4'), True)
+        self.assertRaises(ValueError, self.node4.remove_successor, 'identifier 8', 'tree 8')
+
+    def test_replace_successor(self):
         pass
 
     def test_set_tag(self):
