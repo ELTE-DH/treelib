@@ -198,27 +198,37 @@ class NodeCase(unittest.TestCase):
             self.node1.nid = None
 
     def test_clone_pointers(self):
-        pass
+        self.node1._predecessor[1] = 'test predecessor'
+        self.node2._predecessor[2] = 'test predecessor 2'
+        self.node1.clone_pointers(1, 2, True)  # TODO Ezt még ki kellene taláni, hogy hogyan érdemes tesztelni
+
+    def test_delete_pointers(self):
+        self.node1._predecessor[1] = 'test predecessor'
+        self.node2._predecessor[2] = 'test predecessor 2'
+        self.node1.delete_pointers(1)
+        self.node2.delete_pointers(2)
+        self.assertEqual(self.node1._predecessor, {})
+        self.assertEqual(self.node2._predecessor, {})
 
     def test_set_is_leaf(self):
         self.node1.add_successor('identifier 2', 'tree 2')
         self.node2.set_predecessor('identifier 1', 'tree 1')
+        self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
         self.assertEqual(self.node1.is_leaf('tree 2'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
+        self.assertEqual(self.node3.is_leaf('tree 1'), True)  # ??
+
+    def test_is_root(self):
+        pass
+
+    def test_is_multiple_trees(self):
+        pass
 
     def test_tree_wise_is_leaf(self):
         self.node1.add_successor('identifier 2', 'tree 1')
         self.node2.set_predecessor('identifier 1', 'tree 1')
         self.assertEqual(self.node1.is_leaf('tree 1'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
-
-    def test_predecessor_pop(self):
-        self.node1._predecessor.pop('identifier 1', 'tree 1')
-        self.node1._predecessor.pop('identifier 2', None)
-
-    def test_successors_pop(self):
-        self.node1._successors.pop('identifier 3', 'tree 3')
-        self.node1._successors.pop('identifier 4', None)
 
     def test_data(self):
 
