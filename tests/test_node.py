@@ -78,6 +78,23 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node1 < self.node2)
         self.assertFalse(self.node3 < self.node4)  # Ezt nem értem
 
+    def test_set_tag(self):
+            self.node1.tag = 'Test 1'
+            self.assertEqual(self.node1.tag, 'Test 1')
+            self.node1.tag = 'Test One'
+
+    def test_set_identifier(self):
+        self.node1.nid = 'ID1'
+        self.assertEqual(self.node1.nid, 'ID1')
+        self.node1.nid = 'identifier 1'
+        with self.assertRaises(TypeError):
+            self.node1.nid = None
+
+    def test_object_as_node_tag(self):
+        node = Node(tag=(0, 1))
+        self.assertEqual(node.tag, (0, 1))
+        self.assertTrue(node.__repr__().startswith('Node'))
+
     def test_predecessor(self):
         self.node1._predecessor[1] = 'test predecessor'
         self.node1._predecessor[2] = {'tree 2'}
@@ -134,6 +151,7 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(NotImplementedError, self.node5.set_successors, '', 'identifier 5')
         self.assertRaises(NotImplementedError, self.node5.set_successors, tuple, 'identifier 5')
         self.assertRaises(NotImplementedError, self.node5.set_successors, (), 'identifier 5')
+        self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, 'tree 1')
 
     def test_remove_successors(self):
         self.node4.set_successors([1, 2, 3], 'identifier 4')
@@ -152,6 +170,11 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(isinstance(self.node4.successors(int), list))
         self.assertTrue(isinstance(self.node4.successors(tuple), list))
         self.assertRaises(TypeError, self.node4.add_successor, [], 'identifier 5')
+        self.node1.add_successor('identifier 2', 'tree 1')
+        self.assertEqual(self.node1.successors('tree 1'), ['identifier 2'])
+        self.assertEqual(self.node1._successors['tree 1'], ['identifier 2'])
+        self.node1.set_successors([], 'tree 1')
+        self.assertEqual(self.node1._successors['tree 1'], [])
 
     def test_remove_successor(self):
         self.node4.set_successors([1, 2, 3], 'identifier 4')
@@ -163,32 +186,19 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(ValueError, self.node4.remove_successor, 'identifier 8', 'tree 8')
 
     def test_replace_successor(self):
-        pass
+        self.node4.set_successors([1, 2, 3], 'identifier 4')
+        self.node4.set_successors([10, 20], 'identifier 6')
+        self.node4.replace_successor(1, 'identifier 4', 'identifier 6')
+        self.assertTrue(self.node4.successors('identifier 6'))
+        self.assertRaises(ValueError, self.node4.replace_successor, 30, 'identifier 4', 'identifier 6')
 
-    def test_set_tag(self):
-        self.node1.tag = 'Test 1'
-        self.assertEqual(self.node1.tag, 'Test 1')
-        self.node1.tag = 'Test One'
-
-    def test_object_as_node_tag(self):
-        node = Node(tag=(0, 1))
-        self.assertEqual(node.tag, (0, 1))
-        self.assertTrue(node.__repr__().startswith('Node'))
-
-    def test_set_identifier(self):
-        self.node1.nid = 'ID1'
-        self.assertEqual(self.node1.nid, 'ID1')
-        self.node1.nid = 'identifier 1'
+    def test_unhashables(self):
+        self.assertRaises(TypeError, self.node1.add_successor, set(), dict())
         with self.assertRaises(TypeError):
             self.node1.nid = None
 
-    def test_update_successors(self):
-        self.node1.add_successor('identifier 2', 'tree 1')
-        self.assertEqual(self.node1.successors('tree 1'), ['identifier 2'])
-        self.assertEqual(self.node1._successors['tree 1'], ['identifier 2'])
-        self.node1.set_successors([], 'tree 1')
-        self.assertEqual(self.node1._successors['tree 1'], [])
-        self.assertRaises(NotImplementedError, self.node1.set_successors, Exception, 'tree 1')
+    def test_clone_pointers(self):
+        pass
 
     def test_set_is_leaf(self):
         self.node1.add_successor('identifier 2', 'tree 2')
@@ -202,11 +212,6 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1.is_leaf('tree 1'), False)
         self.assertEqual(self.node2.is_leaf('tree 1'), True)
 
-    def test_unhashables(self):
-        self.assertRaises(TypeError, self.node1.add_successor, set(), dict())
-        with self.assertRaises(TypeError):
-            self.node1.nid = None
-
     def test_predecessor_pop(self):
         self.node1._predecessor.pop('identifier 1', 'tree 1')
         self.node1._predecessor.pop('identifier 2', None)
@@ -214,7 +219,6 @@ class NodeCase(unittest.TestCase):
     def test_successors_pop(self):
         self.node1._successors.pop('identifier 3', 'tree 3')
         self.node1._successors.pop('identifier 4', None)
-
 
     def test_data(self):
 
