@@ -10,26 +10,33 @@ class NodeCase(unittest.TestCase):
         self.node1 = Node('Test One', 'identifier 1')
         self.node2 = Node('Test Two', 'identifier 2')
         self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
-        self.node4 = Node('Test Four', None , None)
+        self.node4 = Node('Test Four')  # None, None TODO "Test nid=None, tag=None"
         self.node5 = Node('Test Five', 'identifier 5')
+        # TODO itt kellene preparálni az osztályokat, amiket tesztelsz, ha csak egy mód van rá.
 
     def test_initialization(self):
         self.assertEqual(self.node1.tag, 'Test One')
         self.assertEqual(self.node1.nid, 'identifier 1')
         self.assertEqual(self.node2.tag, 'Test Two')
         self.assertEqual(self.node2.nid, 'identifier 2')
+        # A fentiek nem kellenek
+        # Test attributes when all of them are given as parameter
         self.assertEqual(self.node3.tag, 'Test Three')
         self.assertEqual(self.node3.nid, 'identifier 3')
         self.assertEqual(self.node3.data, [3, 5, 10])
 
-        self.assertFalse(self.node3.nid == self.node4.nid)
+        # Test attributes when not all of them are given as parameter (combinations)
+
+        # Test if tag is not given -> tag = nid
+
+        self.assertTrue(self.node3.nid != self.node4.nid)
         self.assertTrue(self.node4.nid is not None)
         self.assertTrue(self.node4.data is None)
 
-        a = Node(tag=set())
+        a = Node(tag=set())  # TODO ezeket a setup()-ba...
         self.assertTrue((a.tag is not None))
         self.assertTrue((a.tag == set()))
-        self.assertFalse(isinstance(a.tag, Hashable))
+        self.assertTrue(not isinstance(a.tag, Hashable))
         self.assertRaises(TypeError, isinstance(a.tag, set))
 
         b = Node(nid=set())
@@ -41,7 +48,7 @@ class NodeCase(unittest.TestCase):
         c = Node(data=set('a'))
         self.assertTrue((c.data is not None))
         self.assertTrue((c.data == set('a')))
-        self.assertTrue((c.data is not Any))
+        self.assertTrue((c.data is not Any))  # TODO az is ilyenkor nem jó, mindig False lesz! isinstance-t kell használni!
 
         d = Node()
         self.assertTrue((d._identifier is not None))
@@ -66,6 +73,8 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node1._predecessor, {})
         self.assertTrue(self.node1._predecessor is not Hashable)
         self.assertTrue(self.node1._predecessor == {})
+        self.assertEqual(self.node1._predecessor, {})  # TODO ez ugyanaz mint a fenti. Legyen minden hol assertTrue
+
         self.assertEqual(self.node1._successors, defaultdict(list))
         self.assertFalse(self.node1._successors is Hashable)
         self.assertTrue(self.node1._successors == defaultdict(list))
@@ -76,12 +85,13 @@ class NodeCase(unittest.TestCase):
         self.assertEqual(self.node2.data, None)
 
         self.assertTrue(self.node1 < self.node2)
-        self.assertFalse(self.node3 < self.node4)  # Ezt nem értem
+        self.assertFalse(self.node3 < self.node4)  # Ezt nem értem TODO az UUID random ezért ez össze-vissza lesz
 
-    def test_set_tag(self):
-            self.node1.tag = 'Test 1'
-            self.assertEqual(self.node1.tag, 'Test 1')
-            self.node1.tag = 'Test One'
+    def test_set_tag(self):  # TODO ezt cifrázni pl nem hashable-vel
+        self.node1.tag = 'Test 1'
+        self.node1.nid = []  # TODO ennek exception-t kellene dobnia!
+        self.assertEqual(self.node1.tag, 'Test 1')
+        self.node1.tag = 'Test One'
 
     def test_set_identifier(self):
         self.node1.nid = 'ID1'
@@ -222,6 +232,11 @@ class NodeCase(unittest.TestCase):
         pass
 
     def test_is_multiple_trees(self):
+        self.node1.add_successor('identifier 2', 'tree 2')
+        self.node1.set_predecessor('identifier 2454', 'tree 45453')
+        # TODO ekkor true
+        self.node1.remove_predecessor('tree 45453')
+        # TODO ekkor meg false nak kellene lennie
         pass
 
     def test_tree_wise_is_leaf(self):
