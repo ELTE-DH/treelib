@@ -11,19 +11,19 @@ class NodeCase(unittest.TestCase):
         self.node2 = Node('Test Two', 'identifier 2')
         self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
         self.node4 = Node('Test Four')  # None, None TODO "Test nid=None, tag=None"
-        self.node5 = Node('Test Five', 'identifier 5')
+        self.node5 = Node()
+
         # TODO itt kellene preparálni az osztályokat, amiket tesztelsz, ha csak egy mód van rá.
 
     def test_initialization(self):
-        self.assertEqual(self.node1.tag, 'Test One')
-        self.assertEqual(self.node1.nid, 'identifier 1')
-        self.assertEqual(self.node2.tag, 'Test Two')
-        self.assertEqual(self.node2.nid, 'identifier 2')
-        # A fentiek nem kellenek
         # Test attributes when all of them are given as parameter
         self.assertEqual(self.node3.tag, 'Test Three')
         self.assertEqual(self.node3.nid, 'identifier 3')
         self.assertEqual(self.node3.data, [3, 5, 10])
+
+        self.assertEqual(self.node4.tag, 'Test Four')
+        self.assertTrue(self.node4.nid is not None)
+        self.assertEqual(self.node4.data, None)
 
         # Test attributes when not all of them are given as parameter (combinations)
 
@@ -33,7 +33,8 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node4.nid is not None)
         self.assertTrue(self.node4.data is None)
 
-        a = Node(tag=set())  # TODO ezeket a setup()-ba...
+        a = Node(tag=set())                     # TODO ezeket a setup()-ba... -> Nem tudtam a setupba áttenni,
+                                                # TODO mert akkor az itt elvégzett tesztek nem futnak le
         self.assertTrue((a.tag is not None))
         self.assertTrue((a.tag == set()))
         self.assertTrue(not isinstance(a.tag, Hashable))
