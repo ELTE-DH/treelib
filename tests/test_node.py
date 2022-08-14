@@ -112,6 +112,18 @@ class NodeCase(unittest.TestCase):
         self.node3.nid = 'Test 3'
         self.assertTrue(self.node3.tag == 'Test 3')
 
+        self.node4.tag = 'Test 4'
+        self.node4.nid = None
+        self.assertTrue(self.node4.tag == self.node4.nid)
+        self.assertTrue(isinstance(self.node4.tag, Hashable))
+        self.assertTrue(isinstance(self.node4.tag, str))
+
+        self.node5.tag = None
+        self.node5.nid = None
+        self.assertTrue(self.node5.tag is not None)
+        self.assertTrue(self.node5.nid is not None)
+        self.assertTrue(self.node5.tag == self.node5.nid)
+
     def test_set_identifier(self):
         self.node1.nid = 'ID1'
         self.assertEqual(self.node1.nid, 'ID1')
