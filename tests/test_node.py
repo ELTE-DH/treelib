@@ -150,18 +150,31 @@ class NodeCase(unittest.TestCase):
 
     def test_object_as_node_tag(self):
         node = Node(tag=(0, 1))
-        self.assertEqual(node.tag, (0, 1))
+        self.assertTrue(node.tag == (0, 1))
+        self.assertTrue(node.__repr__().startswith('Node'))
+
+        node = Node(tag='Test 10')
+        self.assertTrue(node.tag == 'Test 10')
         self.assertTrue(node.__repr__().startswith('Node'))
 
     def test_predecessor(self):
         self.node1._predecessor[1] = 'test predecessor'
         self.node1._predecessor[2] = {'tree 2'}
         self.node1._predecessor[3] = None
-        self.assertFalse(self.node1._predecessor[1] is Hashable)
-        self.assertFalse(self.node1._predecessor[2] is Hashable)
-        self.assertTrue(isinstance(self.node1._predecessor[1], str))
+        self.assertTrue(isinstance(self.node1._predecessor[1], Hashable))
+        self.assertFalse(isinstance(self.node1._predecessor[2], Hashable))
+        with self.assertRaises(ValueError):
+            self.node1._predecessor[3] = None  # TODO ennek itt működnie kellene, nem lehetne None
         self.assertEqual(self.node1._predecessor[1], 'test predecessor')
-        self.assertIsNone(self.node1._predecessor[3])
+
+        self.node2._predecessor = {1: 'test one'}
+        self.assertTrue(self.node2._predecessor is not Hashable)
+        self.node2._predecessor[2] = 'add test two'
+        self.assertTrue(isinstance(self.node2._predecessor[2], Hashable))
+        self.node2._predecessor = self.node1
+        self.assertTrue(self.node1._successors == self.node2)
+        self.assertTrue(self.node1._successors is not None)
+
         # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
     def test_set_predecessor(self):
