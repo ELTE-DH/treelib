@@ -143,6 +143,11 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(TypeError, isinstance(self.node2.nid, list))
         self.assertRaises(TypeError, self.node2.nid is not Hashable)
 
+        self.node4.nid = None
+        self.assertTrue(isinstance(self.node4.nid, str))
+        with self.assertRaises(TypeError):
+            self.node1.nid = None
+
     def test_object_as_node_tag(self):
         node = Node(tag=(0, 1))
         self.assertEqual(node.tag, (0, 1))
