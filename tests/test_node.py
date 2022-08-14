@@ -7,31 +7,42 @@ from typing import Any, Union, Hashable, MutableMapping, List
 
 class NodeCase(unittest.TestCase):
     def setUp(self):
+
         self.node1 = Node('Test One', 'identifier 1')
         self.node2 = Node('Test Two', 'identifier 2')
         self.node3 = Node('Test Three', 'identifier 3', [3, 5, 10])
         self.node4 = Node('Test Four')  # None, None TODO "Test nid=None, tag=None"
-        self.node5 = Node()
+        self.node5 = Node('Test Five', None, (10, 2, 1))
+        self.node6 = Node(None, 'identifier 6', '1,2,3')
+        self.node7 = Node(None, None, None)
 
         # TODO itt kellene preparálni az osztályokat, amiket tesztelsz, ha csak egy mód van rá.
 
     def test_initialization(self):
-        # Test attributes when all of them are given as parameter
-        self.assertEqual(self.node3.tag, 'Test Three')
-        self.assertEqual(self.node3.nid, 'identifier 3')
-        self.assertEqual(self.node3.data, [3, 5, 10])
 
-        self.assertEqual(self.node4.tag, 'Test Four')
-        self.assertTrue(self.node4.nid is not None)
-        self.assertEqual(self.node4.data, None)
-
-        # Test attributes when not all of them are given as parameter (combinations)
-
-        # Test if tag is not given -> tag = nid
+        self.assertTrue(self.node3.tag == 'Test Three')
+        self.assertTrue(self.node3.nid == 'identifier 3')
+        self.assertTrue(self.node3.data == [3, 5, 10])
 
         self.assertTrue(self.node3.nid != self.node4.nid)
+
+        self.assertTrue(self.node4.tag == 'Test Four')
         self.assertTrue(self.node4.nid is not None)
         self.assertTrue(self.node4.data is None)
+
+        self.assertTrue(self.node5.tag == 'Test Five')
+        self.assertTrue(self.node5.tag is not None)
+        self.assertTrue(self.node5.data == (10, 2, 1))
+
+        self.assertTrue(self.node6.tag is not None)
+        self.assertTrue(self.node6.tag == self.node6.nid)
+        self.assertTrue(self.node6.data == '1,2,3')
+
+        self.assertTrue(self.node7.tag is not None)
+        self.assertTrue(self.node7.nid is not None)
+        self.assertTrue(self.node7.tag == self.node7.nid)
+        self.assertTrue(self.node7.data is None)
+
 
         a = Node(tag=set())                     # TODO ezeket a setup()-ba... -> Nem tudtam a setupba áttenni,
                                                 # TODO mert akkor az itt elvégzett tesztek nem futnak le
