@@ -123,13 +123,25 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node5.tag is not None)
         self.assertTrue(self.node5.nid is not None)
         self.assertTrue(self.node5.tag == self.node5.nid)
+        with self.assertRaises(TypeError):
+            self.node5.tag = None
 
     def test_set_identifier(self):
         self.node1.nid = 'ID1'
-        self.assertEqual(self.node1.nid, 'ID1')
+        self.assertTrue(self.node1.nid == 'ID1')
         self.node1.nid = 'identifier 1'
         with self.assertRaises(TypeError):
             self.node1.nid = None
+
+        self.node2.nid = ['Test 2', 'Test Two']
+        self.assertTrue(isinstance(self.node2.nid, list))
+        self.assertRaises(TypeError, isinstance(self.node2.nid, list))
+        self.assertRaises(TypeError, self.node2.nid is not Hashable)
+
+        self.node3.nid = ['Test 2', 'Test Two']
+        self.assertTrue(isinstance(self.node2.nid, list))
+        self.assertRaises(TypeError, isinstance(self.node2.nid, list))
+        self.assertRaises(TypeError, self.node2.nid is not Hashable)
 
     def test_object_as_node_tag(self):
         node = Node(tag=(0, 1))
