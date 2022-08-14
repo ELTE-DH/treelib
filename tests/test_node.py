@@ -43,9 +43,9 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node7.tag == self.node7.nid)
         self.assertTrue(self.node7.data is None)
 
+        a = Node(tag=set())                # TODO ezeket a setup()-ba... -> Nem tudtam a setupba áttenni,
+                                           # TODO mert akkor az itt elvégzett tesztek nem futnak le
 
-        a = Node(tag=set())                     # TODO ezeket a setup()-ba... -> Nem tudtam a setupba áttenni,
-                                                # TODO mert akkor az itt elvégzett tesztek nem futnak le
         self.assertTrue((a.tag is not None))
         self.assertTrue((a.tag == set()))
         self.assertTrue(not isinstance(a.tag, Hashable))
@@ -60,7 +60,7 @@ class NodeCase(unittest.TestCase):
         c = Node(data=set('a'))
         self.assertTrue((c.data is not None))
         self.assertTrue((c.data == set('a')))
-        self.assertTrue((c.data is not Any))  # TODO az is ilyenkor nem jó, mindig False lesz! isinstance-t kell használni!
+        self.assertTrue(isinstance(c.data, set))
 
         d = Node()
         self.assertTrue((d._identifier is not None))
@@ -82,22 +82,18 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(g.data is not Hashable)
         self.assertTrue(g._identifier is not None)
 
-        self.assertEqual(self.node1._predecessor, {})
-        self.assertTrue(self.node1._predecessor is not Hashable)
         self.assertTrue(self.node1._predecessor == {})
-        self.assertEqual(self.node1._predecessor, {})  # TODO ez ugyanaz mint a fenti. Legyen minden hol assertTrue
+        self.assertTrue(self.node1._predecessor is not Hashable)
 
-        self.assertEqual(self.node1._successors, defaultdict(list))
-        self.assertFalse(self.node1._successors is Hashable)
         self.assertTrue(self.node1._successors == defaultdict(list))
+        self.assertFalse(self.node1._successors is Hashable)
 
         self.node1.data = ['b', 'c']
         self.assertTrue(self.node1.data is not None)
 
-        self.assertEqual(self.node2.data, None)
+        self.assertTrue(self.node2.data == None)
 
         self.assertTrue(self.node1 < self.node2)
-        self.assertFalse(self.node3 < self.node4)  # Ezt nem értem TODO az UUID random ezért ez össze-vissza lesz
 
     def test_set_tag(self):  # TODO ezt cifrázni pl nem hashable-vel
         self.node1.tag = 'Test 1'
