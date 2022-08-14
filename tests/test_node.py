@@ -97,9 +97,10 @@ class NodeCase(unittest.TestCase):
 
     def test_set_tag(self):  # TODO ezt cifrázni pl nem hashable-vel
         self.node1.tag = 'Test 1'
-        self.node1.nid = []  # TODO ennek exception-t kellene dobnia!
-        self.assertEqual(self.node1.tag, 'Test 1')
-        self.node1.tag = 'Test One'
+        self.assertTrue(self.node1.tag == 'Test 1')
+        self.node1.nid = []
+        self.assertRaises(TypeError, isinstance(self.node1.nid, list))
+        
 
     def test_set_identifier(self):
         self.node1.nid = 'ID1'
