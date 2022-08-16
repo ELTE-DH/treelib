@@ -204,7 +204,6 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node3.predecessor('tree 6') == tuple)
 
         self.node5.set_predecessor(self.node3, 'tree 223')
-      
 
     def test_remove_predecessor(self):
         self.node5.set_predecessor('tree 10', 'identifier 10')
