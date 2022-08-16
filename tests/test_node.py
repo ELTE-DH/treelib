@@ -200,10 +200,11 @@ class NodeCase(unittest.TestCase):
         self.assertRaises(TypeError, self.node1.set_predecessor, 'identifier 5', [])
 
         self.node3.set_predecessor(tuple, 'tree 6')
-        self.assertEqual(self.node3._predecessor['tree 6'], tuple)
-        self.assertEqual(self.node3.predecessor('tree 6'), tuple)
+        self.assertTrue(self.node3._predecessor['tree 6'] == tuple)
+        self.assertTrue(self.node3.predecessor('tree 6') == tuple)
 
-        self.node5.set_predecessor('identifier 10', 'tree 10')
+        self.node5.set_predecessor(self.node3, 'tree 223')
+      
 
     def test_remove_predecessor(self):
         self.node5.set_predecessor('tree 10', 'identifier 10')
