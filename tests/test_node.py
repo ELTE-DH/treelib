@@ -175,17 +175,23 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node1._successors == self.node2)
         self.assertTrue(self.node1._successors is not None)
 
+        self.node3._predecessor = None
+        with self.assertRaises(ValueError):
+            self.node3._predecessor = None
+
         # TODO Itt teszteljük az összes predecessor függvényt (predecessor, set_predecessor, remove_predecessor)
 
     def test_set_predecessor(self):
         self.node1.set_predecessor('identifier 3', 'tree 3')
-        self.assertEqual(self.node1.predecessor('tree 3'), 'identifier 3')
-        self.assertEqual(self.node1._predecessor['tree 3'], 'identifier 3')
+        self.assertTrue(self.node1.predecessor('tree 3') == 'identifier 3')
+        self.assertTrue(self.node1._predecessor['tree 3'] == 'identifier 3')
+
         self.node1.set_predecessor(None, 'tree 3')
-        self.assertEqual(self.node1.predecessor('tree 3'), None)
+        self.assertTrue(self.node1.predecessor('tree 3') == None)
         self.assertRaises(TypeError, self.node1.set_predecessor, {}, 'tree 3')
+
         self.node2.set_predecessor('identifier 4', 'tree 4')
-        self.assertFalse(self.node2.set_predecessor('identifier 4', 'tree 4') is Hashable)
+        self.assertTrue(isinstance(self.node2.set_predecessor('identifier 4', 'tree 4'), Hashable))
         self.assertEqual(self.node2.predecessor('tree 4'), 'identifier 4')
         self.assertEqual(self.node2._predecessor['tree 4'], 'identifier 4')
         self.assertTrue(self.node2._predecessor['tree 4'] is not Hashable)
