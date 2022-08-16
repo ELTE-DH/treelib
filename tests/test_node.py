@@ -188,15 +188,15 @@ class NodeCase(unittest.TestCase):
 
         self.node1.set_predecessor(None, 'tree 3')
         self.assertTrue(self.node1.predecessor('tree 3') == None)
+
         self.assertRaises(TypeError, self.node1.set_predecessor, {}, 'tree 3')
 
         self.node2.set_predecessor('identifier 4', 'tree 4')
         self.assertTrue(isinstance(self.node2.set_predecessor('identifier 4', 'tree 4'), Hashable))
-        self.assertEqual(self.node2.predecessor('tree 4'), 'identifier 4')
-        self.assertEqual(self.node2._predecessor['tree 4'], 'identifier 4')
-        self.assertTrue(self.node2._predecessor['tree 4'] is not Hashable)
-        self.assertRaises(TypeError, self.node1.set_predecessor, [], 'tree 4')
+        self.assertTrue(self.node2.predecessor('tree 4') == 'identifier 4')
+        self.assertTrue(self.node2._predecessor['tree 4'] == 'identifier 4')
 
+        self.assertRaises(TypeError, self.node1.set_predecessor, [], 'tree 4')
         self.assertRaises(TypeError, self.node1.set_predecessor, 'identifier 5', [])
 
         self.node3.set_predecessor(tuple, 'tree 6')
