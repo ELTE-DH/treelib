@@ -34,6 +34,11 @@ class TreeCase(unittest.TestCase):
         tree.create_node('Diane', 'diane', parent='jane')
         tree.create_node('George', 'george', parent='bill')
 
+        tree = Tree(tree_id='tree 2')
+        tree.create_node('The', 'the', parent='dog')
+        tree.create_node('Dog', 'dog', parent='is sleeping')
+        tree.create_node('is sleeping', 'is sleeping')
+
         self.tree = tree
         self.copytree = Tree(self.tree, deep=True)
 

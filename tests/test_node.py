@@ -5,6 +5,7 @@ from treelib import Node, Tree
 from typing import Any, Union, Hashable, MutableMapping, List
 
 
+
 class NodeCase(unittest.TestCase):
     def setUp(self):
 
@@ -203,9 +204,7 @@ class NodeCase(unittest.TestCase):
         self.assertTrue(self.node3._predecessor['tree 6'] == tuple)
         self.assertTrue(self.node3.predecessor('tree 6') == tuple)
 
-        self.node5.set_predecessor(self.node3, 'tree 223')
-
-    def test_remove_predecessor(self):
+     def test_remove_predecessor(self):
         self.node5.set_predecessor('tree 10', 'identifier 10')
         self.node5.set_predecessor('tree 10', 'identifier 6')
         self.node5.set_predecessor('tree 5', 'identifier 9')
@@ -218,7 +217,10 @@ class NodeCase(unittest.TestCase):
         self.node3.successors('identifier 3')
         self.node2.successors('identifier 2')
         self.node1.successors(None)
-        self.assertFalse(self.node3.successors('identifier 3') is Hashable)
+        self.assertTrue(isinstance(self.node3.successors('identifier 3'), Hashable))
+        self.node3.successors(self.node2)
+        self.assertTrue(self.node3.successors == self.node2, 'identifier 3')
+        print(self.node3.successors)
 
     def test_set_successors(self):
         self.node4.set_successors([1, 2, 3], 'identifier 4')
