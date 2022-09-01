@@ -8,6 +8,7 @@ import os
 import unittest
 from treelib import Tree, Node
 from treelib.tree import NodeIDAbsentError, LoopError, DuplicatedNodeIDError
+from typing import Any, Union, Hashable, MutableMapping, List
 
 
 class SubNode(Node):
@@ -42,6 +43,8 @@ class TreeCase(unittest.TestCase):
         self.tree = tree
         self.copytree = Tree(self.tree, deep=True)
 
+        tree.root = 'root'
+        self.assertTrue(isinstance(tree.root, Hashable))
         self.subnode = SubNode()
         self.subnode = NotSubNode()
 
@@ -75,6 +78,20 @@ class TreeCase(unittest.TestCase):
         t.create_node(tag='D1', nid='d1', parent='d')
         return t
 
+    def get_t1():
+        """
+        root
+        ├── A
+        │   └── A1
+        └── B
+        """
+        t = Tree(tree_id='t1')
+        t.create_node(tag='root', nid='r')
+        t.create_node(tag='A', nid='a', parent='r')
+        t.create_node(tag='B', nid='b', parent='r')
+        t.create_node(tag='A1', nid='a1', parent='a')
+        return t
+    
     def test_tree(self):
         self.assertEqual(isinstance(self.tree, Tree), True)
         self.assertEqual(isinstance(self.copytree, Tree), True)
